@@ -1,8 +1,13 @@
+import { Navigate, Route, Routes } from "react-router-dom"
+
+import RegisterPage from "./pages/auth/RegisterPage"
+
 function App() {
   return (
-    <main>
-      <h1>AI Quiz Platform</h1>
-    </main>
+    <Routes>
+      <Route path="/" element={<Navigate to="/register" replace />} />
+      <Route path="/register" element={<RegisterPage />} />
+    </Routes>
   )
 }
 
