@@ -1,25 +1,11 @@
 from sqlalchemy import select
 
-from fastapi import Depends
-
-from app.core.auth import get_current_user
-from app.main import app
 from app.models.user import User
 from app.core.security import verify_password
 from app.models.user import User
 from app.core.config import settings
 
 import jwt
-
-
-@app.get("/test/protected")
-def protected_test_endpoint(
-    current_user: User = Depends(get_current_user),
-):
-    return {
-        "user_id": str(current_user.id),
-        "email": current_user.email,
-    }
 
 
 def test_register_user_success(client):
@@ -254,18 +240,18 @@ def test_access_token_contains_user_id(client):
     assert "exp" in payload
 
 
-def test_valid_token_authenticates_user(client):
+def test_get_current_user(client):
     register_response = register_user(
         client,
-        email="protected@example.com",
+        email="me@example.com",
     )
 
-    user_id = register_response.json()["id"]
+    registered_user = register_response.json()
 
     login_response = client.post(
         "/api/v1/auth/login",
         json={
-            "email": "protected@example.com",
+            "email": "me@example.com",
             "password": "Testing123!",
         },
     )
@@ -273,22 +259,30 @@ def test_valid_token_authenticates_user(client):
     token = login_response.json()["access_token"]
 
     response = client.get(
-        "/test/protected",
+        "/api/v1/auth/me",
         headers={
             "Authorization": f"Bearer {token}",
         },
     )
 
     assert response.status_code == 200
-    assert response.json()["user_id"] == user_id
-    assert response.json()["email"] == "protected@example.com"
+
+    data = response.json()
+
+    assert data["id"] == registered_user["id"]
+    assert data["email"] == "me@example.com"
+    assert data["display_name"] == "Test User"
+    assert data["is_active"] is True
+
+    assert "password" not in data
+    assert "password_hash" not in data
 
 
-def test_invalid_token_is_rejected(client):
+def test_get_current_user_with_invalid_token(client):
     response = client.get(
-        "/test/protected",
+        "/api/v1/auth/me",
         headers={
-            "Authorization": "Bearer this.is.not.a.valid.jwt",
+            "Authorization": "Bearer invalid.jwt.token",
         },
     )
 
@@ -296,8 +290,10 @@ def test_invalid_token_is_rejected(client):
     assert response.json()["detail"] == "Could not validate credentials"
 
 
-def test_protected_endpoint_requires_token(client):
-    response = client.get("/test/protected")
+def test_get_current_user_requires_authentication(client):
+    response = client.get(
+        "/api/v1/auth/me",
+    )
 
     assert response.status_code in (401, 403)
 

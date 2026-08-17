@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.security import hash_password
 from app.models.user import User
 from app.schemas.user import UserRegister, UserResponse
+from app.core.auth import get_current_user
 
 from app.core.security import (
     create_access_token,
@@ -22,6 +23,16 @@ from app.schemas.user import (
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+)
+def get_me(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    return current_user
+    
 
 @router.post(
     "/register",
