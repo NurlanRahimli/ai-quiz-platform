@@ -12,6 +12,7 @@ from app.schemas.quiz import (
     QuizCreate,
     QuizDetailResponse,
     QuizResponse,
+    QuizTakeResponse,
     QuizUpdate,
 )
 from app.models.question import Question
@@ -60,6 +61,36 @@ def list_quizzes(
             .order_by(Quiz.created_at.desc())
         )
     )
+
+
+@router.get(
+    "/{quiz_id}/take",
+    response_model=QuizTakeResponse,
+)
+def take_quiz(
+    quiz_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Quiz:
+    quiz = db.scalar(
+        select(Quiz)
+        .options(
+            selectinload(Quiz.questions)
+            .selectinload(Question.answer_choices)
+        )
+        .where(
+            Quiz.id == quiz_id,
+            Quiz.owner_id == current_user.id,
+        )
+    )
+
+    if quiz is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found",
+        )
+
+    return quiz
 
 
 @router.get(

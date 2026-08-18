@@ -1,0 +1,162 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from app.core.auth import get_current_user
+from app.core.database import get_db
+from app.models.answer_choice import AnswerChoice
+from app.models.question import Question
+from app.models.quiz import Quiz
+from app.models.quiz_attempt import QuizAttempt
+from app.models.quiz_attempt_answer import QuizAttemptAnswer
+from app.models.user import User
+from app.schemas.quiz_attempt import (
+    QuizAttemptResponse,
+    QuizAttemptSubmit,
+)
+
+
+router = APIRouter(
+    prefix="/quizzes",
+    tags=["Quiz Attempts"],
+)
+
+
+@router.post(
+    "/{quiz_id}/attempts",
+    response_model=QuizAttemptResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def submit_quiz_attempt(
+    quiz_id: uuid.UUID,
+    attempt_data: QuizAttemptSubmit,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QuizAttempt:
+    quiz = db.scalar(
+        select(Quiz)
+        .options(
+            selectinload(Quiz.questions)
+            .selectinload(Question.answer_choices)
+        )
+        .where(
+            Quiz.id == quiz_id,
+            Quiz.owner_id == current_user.id,
+        )
+    )
+
+    if quiz is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found",
+        )
+
+    questions = {
+        question.id: question
+        for question in quiz.questions
+    }
+
+    submitted_question_ids = [
+        answer.question_id
+        for answer in attempt_data.answers
+    ]
+
+    if len(submitted_question_ids) != len(set(submitted_question_ids)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Each question can only be answered once",
+        )
+
+    if set(submitted_question_ids) != set(questions):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="An answer must be provided for every quiz question",
+        )
+
+    attempt = QuizAttempt(
+        quiz_id=quiz.id,
+        user_id=current_user.id,
+    )
+
+    for submitted_answer in attempt_data.answers:
+        question = questions[submitted_answer.question_id]
+
+        if question.question_type == "multiple_choice":
+            if (
+                submitted_answer.selected_choice_id is None
+                or submitted_answer.text_answer is not None
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "Multiple-choice questions require exactly "
+                        "one selected choice"
+                    ),
+                )
+
+            valid_choice_ids = {
+                choice.id
+                for choice in question.answer_choices
+            }
+
+            if submitted_answer.selected_choice_id not in valid_choice_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "Selected answer choice does not belong "
+                        "to this question"
+                    ),
+                )
+
+        elif question.question_type in {
+            "written_answer",
+            "math_work",
+        }:
+            text_answer = (
+                submitted_answer.text_answer.strip()
+                if submitted_answer.text_answer
+                else ""
+            )
+
+            if (
+                not text_answer
+                or submitted_answer.selected_choice_id is not None
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "Written and math questions require "
+                        "a text answer"
+                    ),
+                )
+
+            submitted_answer.text_answer = text_answer
+
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Unsupported question type",
+            )
+
+        attempt.answers.append(
+            QuizAttemptAnswer(
+                question_id=question.id,
+                selected_choice_id=(
+                    submitted_answer.selected_choice_id
+                ),
+                text_answer=submitted_answer.text_answer,
+            )
+        )
+
+    db.add(attempt)
+    db.commit()
+
+    saved_attempt = db.scalar(
+        select(QuizAttempt)
+        .options(selectinload(QuizAttempt.answers))
+        .where(QuizAttempt.id == attempt.id)
+    )
+
+    return saved_attempt

@@ -356,3 +356,61 @@ def test_get_quiz_includes_questions(client):
     assert data["questions"][1]["question_type"] == "written_answer"
     assert data["questions"][1]["text"] == "Explain closures."
     assert data["questions"][1]["answer_choices"] == []
+
+
+def test_take_quiz_does_not_expose_correct_answers(client):
+    headers = register_and_login(
+        client,
+        email="quiz-taker@example.com",
+    )
+
+    quiz_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "JavaScript Quiz",
+            "description": "Test your JavaScript knowledge",
+        },
+    )
+
+    quiz_id = quiz_response.json()["id"]
+
+    question_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions",
+        headers=headers,
+        json={
+            "text": "Which keyword declares a block-scoped variable?",
+            "choices": [
+                {
+                    "text": "let",
+                    "is_correct": True,
+                },
+                {
+                    "text": "define",
+                    "is_correct": False,
+                },
+            ],
+        },
+    )
+
+    assert question_response.status_code == 201
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz_id}/take",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["title"] == "JavaScript Quiz"
+    assert len(data["questions"]) == 1
+
+    question = data["questions"][0]
+
+    assert question["question_type"] == "multiple_choice"
+    assert len(question["answer_choices"]) == 2
+
+    for choice in question["answer_choices"]:
+        assert "is_correct" not in choice
