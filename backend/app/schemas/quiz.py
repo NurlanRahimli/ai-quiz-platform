@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.question import QuestionResponse
+
 
 class QuizCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
@@ -46,3 +48,7 @@ class QuizResponse(BaseModel):
     description: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class QuizDetailResponse(QuizResponse):
+    questions: list[QuestionResponse]
