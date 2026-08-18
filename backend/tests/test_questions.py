@@ -303,3 +303,126 @@ def test_create_question_requires_authentication(client):
     )
 
     assert response.status_code in (401, 403)
+
+
+def test_create_written_answer_question(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/written",
+        headers=headers,
+        json={
+            "text": "Explain what a closure is in JavaScript.",
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["quiz_id"] == quiz_id
+    assert data["text"] == "Explain what a closure is in JavaScript."
+    assert data["question_type"] == "written_answer"
+    assert data["position"] == 1
+    assert data["answer_choices"] == []
+
+
+def test_written_answer_question_rejects_empty_text(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/written",
+        headers=headers,
+        json={
+            "text": "   ",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_cannot_add_written_question_to_another_users_quiz(client):
+    owner_headers = register_and_login(
+        client,
+        email="written-owner@example.com",
+    )
+    quiz_id = create_quiz(client, owner_headers)
+
+    other_headers = register_and_login(
+        client,
+        email="written-other@example.com",
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/written",
+        headers=other_headers,
+        json={
+            "text": "Unauthorized written question",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Quiz not found"
+
+
+def test_create_written_question_requires_authentication(client):
+    response = client.post(
+        (
+            "/api/v1/quizzes/"
+            "00000000-0000-0000-0000-000000000000/"
+            "questions/written"
+        ),
+        json={
+            "text": "Unauthorized written question",
+        },
+    )
+
+    assert response.status_code in (401, 403)
+
+
+def test_multiple_choice_and_written_questions_share_positions(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    multiple_choice_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions",
+        headers=headers,
+        json={
+            "text": "What is 2 + 2?",
+            "choices": [
+                {
+                    "text": "3",
+                    "is_correct": False,
+                },
+                {
+                    "text": "4",
+                    "is_correct": True,
+                },
+            ],
+        },
+    )
+
+    written_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/written",
+        headers=headers,
+        json={
+            "text": "Explain how you got your answer.",
+        },
+    )
+
+    assert multiple_choice_response.status_code == 201
+    assert written_response.status_code == 201
+
+    assert multiple_choice_response.json()["position"] == 1
+    assert written_response.json()["position"] == 2
+
+    assert (
+        multiple_choice_response.json()["question_type"]
+        == "multiple_choice"
+    )
+    assert (
+        written_response.json()["question_type"]
+        == "written_answer"
+    )

@@ -57,6 +57,20 @@ class QuestionCreate(BaseModel):
         return choices
 
 
+class WrittenAnswerQuestionCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Question cannot be empty")
+
+        return value
+
+
 class QuestionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
