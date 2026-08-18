@@ -426,3 +426,137 @@ def test_multiple_choice_and_written_questions_share_positions(client):
         written_response.json()["question_type"]
         == "written_answer"
     )
+
+
+def test_create_math_work_question(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=headers,
+        json={
+            "text": "Solve 2x + 6 = 14 and show your work.",
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["quiz_id"] == quiz_id
+    assert data["text"] == "Solve 2x + 6 = 14 and show your work."
+    assert data["question_type"] == "math_work"
+    assert data["position"] == 1
+    assert data["answer_choices"] == []
+
+
+def test_math_work_question_rejects_empty_text(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=headers,
+        json={
+            "text": "   ",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_cannot_add_math_work_question_to_another_users_quiz(client):
+    owner_headers = register_and_login(
+        client,
+        email="math-owner@example.com",
+    )
+    quiz_id = create_quiz(client, owner_headers)
+
+    other_headers = register_and_login(
+        client,
+        email="math-other@example.com",
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=other_headers,
+        json={
+            "text": "Solve x + 5 = 10.",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Quiz not found"
+
+
+def test_create_math_work_question_requires_authentication(client):
+    response = client.post(
+        (
+            "/api/v1/quizzes/"
+            "00000000-0000-0000-0000-000000000000/"
+            "questions/math-work"
+        ),
+        json={
+            "text": "Solve x + 5 = 10.",
+        },
+    )
+
+    assert response.status_code in (401, 403)
+
+
+def test_all_question_types_share_positions(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    multiple_choice_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions",
+        headers=headers,
+        json={
+            "text": "What is 2 + 2?",
+            "choices": [
+                {
+                    "text": "3",
+                    "is_correct": False,
+                },
+                {
+                    "text": "4",
+                    "is_correct": True,
+                },
+            ],
+        },
+    )
+
+    written_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/written",
+        headers=headers,
+        json={
+            "text": "Explain why closures are useful.",
+        },
+    )
+
+    math_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=headers,
+        json={
+            "text": "Solve 3x + 2 = 11 and show your work.",
+        },
+    )
+
+    assert multiple_choice_response.status_code == 201
+    assert written_response.status_code == 201
+    assert math_response.status_code == 201
+
+    assert multiple_choice_response.json()["position"] == 1
+    assert written_response.json()["position"] == 2
+    assert math_response.json()["position"] == 3
+
+    assert (
+        multiple_choice_response.json()["question_type"]
+        == "multiple_choice"
+    )
+    assert (
+        written_response.json()["question_type"]
+        == "written_answer"
+    )
+    assert math_response.json()["question_type"] == "math_work"
