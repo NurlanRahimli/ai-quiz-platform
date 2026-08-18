@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import axios from "axios"
 import { Link } from "react-router-dom"
+import { useAuth } from "../../auth/useAuth"
 
 import apiClient from "../../api/client"
 import "./RegisterPage.css"
@@ -24,6 +25,7 @@ function LoginPage() {
     password: "",
   })
 
+  const { login } = useAuth()
   const [errors, setErrors] = useState<LoginErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -73,13 +75,8 @@ function LoginPage() {
         password: form.password,
       })
 
-      /*
-       * QUI-18 will own persistent authentication state and token storage.
-       * For now we only verify that login succeeds and the API returns a token.
-       */
-      if (response.data.access_token) {
-        setIsSuccess(true)
-      }
+      await login(response.data.access_token)
+      setIsSuccess(true)
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const detail = error.response?.data?.detail
