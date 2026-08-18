@@ -5,6 +5,7 @@ import LoginPage from "./pages/auth/LoginPage"
 import RegisterPage from "./pages/auth/RegisterPage"
 import DashboardPage from "./pages/dashboard/DashboardPage"
 import CreateQuizPage from "./pages/quizzes/CreateQuizPage"
+import EditQuizPage from "./pages/quizzes/EditQuizPage"
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/quizzes/new" element={<CreateQuizPage />} />
+        <Route path="/quizzes/:quizId" element={<EditQuizPage />} />
       </Route>
     </Routes>
   )

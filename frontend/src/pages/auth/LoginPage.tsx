@@ -1,7 +1,7 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import axios from "axios"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../../auth/useAuth"
 
 import apiClient from "../../api/client"
@@ -20,6 +20,7 @@ type LoginResponse = {
 }
 
 function LoginPage() {
+  const navigate = useNavigate()
   const [form, setForm] = useState<LoginForm>({
     email: "",
     password: "",
@@ -28,7 +29,6 @@ function LoginPage() {
   const { login } = useAuth()
   const [errors, setErrors] = useState<LoginErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
 
   const updateField = (field: keyof LoginForm, value: string) => {
     setForm((current) => ({
@@ -67,7 +67,6 @@ function LoginPage() {
     }
 
     setIsSubmitting(true)
-    setIsSuccess(false)
 
     try {
       const response = await apiClient.post<LoginResponse>("/auth/login", {
@@ -76,7 +75,7 @@ function LoginPage() {
       })
 
       await login(response.data.access_token)
-      setIsSuccess(true)
+      navigate("/dashboard", { replace: true })
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const detail = error.response?.data?.detail
@@ -119,12 +118,6 @@ function LoginPage() {
         {errors.form && (
           <div className="form-message form-error" role="alert">
             {errors.form}
-          </div>
-        )}
-
-        {isSuccess && (
-          <div className="form-message form-success" role="status">
-            Login successful.
           </div>
         )}
 

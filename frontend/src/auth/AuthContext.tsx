@@ -4,7 +4,6 @@ import {
   useState,
 } from "react"
 import type { ReactNode } from "react"
-
 import apiClient from "../api/client"
 import {
   AuthContext,
@@ -12,23 +11,18 @@ import {
   type User,
 } from "./auth-context"
 
-
 const TOKEN_STORAGE_KEY = "ai_quiz_access_token"
-
 
 type AuthProviderProps = {
   children: ReactNode
 }
 
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(() =>
     localStorage.getItem(TOKEN_STORAGE_KEY),
   )
-
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-
 
   const fetchCurrentUser = useCallback(async (accessToken: string) => {
     const response = await apiClient.get<User>("/auth/me", {
@@ -40,40 +34,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return response.data
   }, [])
 
-
   const login = async (accessToken: string) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, accessToken)
-    setToken(accessToken)
+    setIsLoading(true)
 
     try {
+      localStorage.setItem(TOKEN_STORAGE_KEY, accessToken)
+      setToken(accessToken)
+
       const currentUser = await fetchCurrentUser(accessToken)
       setUser(currentUser)
     } catch (error) {
       localStorage.removeItem(TOKEN_STORAGE_KEY)
       setToken(null)
       setUser(null)
-
       throw error
+    } finally {
+      setIsLoading(false)
     }
   }
-
 
   const logout = () => {
     localStorage.removeItem(TOKEN_STORAGE_KEY)
     setToken(null)
     setUser(null)
+    setIsLoading(false)
   }
-
 
   useEffect(() => {
     const restoreSession = async () => {
-      if (!token) {
+      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+
+      if (!storedToken) {
+        setToken(null)
+        setUser(null)
         setIsLoading(false)
         return
       }
 
+      setIsLoading(true)
+
       try {
-        const currentUser = await fetchCurrentUser(token)
+        const currentUser = await fetchCurrentUser(storedToken)
+        setToken(storedToken)
         setUser(currentUser)
       } catch {
         localStorage.removeItem(TOKEN_STORAGE_KEY)
@@ -84,9 +86,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
 
-    restoreSession()
-  }, [token, fetchCurrentUser])
-
+    void restoreSession()
+  }, [fetchCurrentUser])
 
   const value: AuthContextValue = {
     user,
@@ -96,7 +97,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     logout,
   }
-
 
   return (
     <AuthContext.Provider value={value}>

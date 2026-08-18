@@ -2,14 +2,19 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.quiz import Quiz
 from app.models.user import User
-from app.schemas.quiz import QuizCreate, QuizResponse, QuizUpdate
-
+from app.schemas.quiz import (
+    QuizCreate,
+    QuizDetailResponse,
+    QuizResponse,
+    QuizUpdate,
+)
+from app.models.question import Question
 
 router = APIRouter(
     prefix="/quizzes",
@@ -59,7 +64,7 @@ def list_quizzes(
 
 @router.get(
     "/{quiz_id}",
-    response_model=QuizResponse,
+    response_model=QuizDetailResponse,
 )
 def get_quiz(
     quiz_id: uuid.UUID,
@@ -67,7 +72,12 @@ def get_quiz(
     current_user: User = Depends(get_current_user),
 ) -> Quiz:
     quiz = db.scalar(
-        select(Quiz).where(
+        select(Quiz)
+        .options(
+            selectinload(Quiz.questions)
+            .selectinload(Question.answer_choices)
+        )
+        .where(
             Quiz.id == quiz_id,
             Quiz.owner_id == current_user.id,
         )

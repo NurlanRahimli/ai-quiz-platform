@@ -85,6 +85,39 @@ class MathWorkQuestionCreate(BaseModel):
         return value
 
 
+class QuestionTextUpdate(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Question cannot be empty")
+
+        return value
+
+
+class MultipleChoiceQuestionUpdate(QuestionTextUpdate):
+    choices: list[AnswerChoiceCreate] = Field(min_length=2)
+
+    @field_validator("choices")
+    @classmethod
+    def validate_choices(
+        cls,
+        choices: list[AnswerChoiceCreate],
+    ) -> list[AnswerChoiceCreate]:
+        correct_count = sum(choice.is_correct for choice in choices)
+
+        if correct_count != 1:
+            raise ValueError(
+                "A multiple-choice question must have exactly one correct answer"
+            )
+
+        return choices
+
+
 class QuestionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

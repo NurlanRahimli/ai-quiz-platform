@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -12,11 +12,14 @@ from app.models.quiz import Quiz
 from app.models.user import User
 from app.schemas.question import (
     MathWorkQuestionCreate,
+    MultipleChoiceQuestionUpdate,
     QuestionCreate,
     QuestionResponse,
+    QuestionTextUpdate,
     WrittenAnswerQuestionCreate,
 )
 
+from pydantic import ValidationError
 
 router = APIRouter(
     prefix="/quizzes",
@@ -166,3 +169,121 @@ def create_math_work_question(
     db.refresh(question)
 
     return question
+
+
+@router.patch(
+    "/{quiz_id}/questions/{question_id}",
+    response_model=QuestionResponse,
+)
+def update_question(
+    quiz_id: uuid.UUID,
+    question_id: uuid.UUID,
+    question_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Question:
+    question = db.scalar(
+        select(Question)
+        .join(Quiz)
+        .where(
+            Question.id == question_id,
+            Question.quiz_id == quiz_id,
+            Quiz.owner_id == current_user.id,
+        )
+    )
+
+    if question is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found",
+        )
+
+    if question.question_type == "multiple_choice":
+        try:
+            validated = MultipleChoiceQuestionUpdate.model_validate(
+                question_data
+            )
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=exc.errors(include_context=False),
+            ) from exc
+
+        question.text = validated.text
+        question.answer_choices.clear()
+
+        question.answer_choices.extend(
+            AnswerChoice(
+                text=choice.text,
+                is_correct=choice.is_correct,
+                position=index,
+            )
+            for index, choice in enumerate(
+                validated.choices,
+                start=1,
+            )
+        )
+    else:
+        try:
+            validated = QuestionTextUpdate.model_validate(question_data)
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=exc.errors(),
+            ) from exc
+        question.text = validated.text
+
+    db.commit()
+    db.refresh(question)
+
+    return question
+
+
+@router.delete(
+    "/{quiz_id}/questions/{question_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_question(
+    quiz_id: uuid.UUID,
+    question_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    question = db.scalar(
+        select(Question)
+        .join(Quiz)
+        .where(
+            Question.id == question_id,
+            Question.quiz_id == quiz_id,
+            Quiz.owner_id == current_user.id,
+        )
+    )
+
+    if question is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found",
+        )
+
+    deleted_position = question.position
+
+    db.delete(question)
+    db.flush()
+
+    remaining_questions = list(
+        db.scalars(
+            select(Question)
+            .where(
+                Question.quiz_id == quiz_id,
+                Question.position > deleted_position,
+            )
+            .order_by(Question.position)
+        )
+    )
+
+    for remaining_question in remaining_questions:
+        remaining_question.position -= 1
+
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

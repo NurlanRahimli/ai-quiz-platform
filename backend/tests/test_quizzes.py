@@ -286,3 +286,73 @@ def test_user_cannot_delete_another_users_quiz(client):
     )
 
     assert owner_response.status_code == 200
+
+
+def test_get_quiz_includes_questions(client):
+    headers = register_and_login(
+        client,
+        email="quiz-detail@example.com",
+    )
+
+    create_quiz_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "JavaScript Quiz",
+            "description": "Quiz editing test",
+        },
+    )
+
+    assert create_quiz_response.status_code == 201
+    quiz_id = create_quiz_response.json()["id"]
+
+    mc_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions",
+        headers=headers,
+        json={
+            "text": "What is 2 + 2?",
+            "choices": [
+                {
+                    "text": "3",
+                    "is_correct": False,
+                },
+                {
+                    "text": "4",
+                    "is_correct": True,
+                },
+            ],
+        },
+    )
+
+    written_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/written",
+        headers=headers,
+        json={
+            "text": "Explain closures.",
+        },
+    )
+
+    assert mc_response.status_code == 201
+    assert written_response.status_code == 201
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz_id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["title"] == "JavaScript Quiz"
+    assert len(data["questions"]) == 2
+
+    assert data["questions"][0]["position"] == 1
+    assert data["questions"][0]["question_type"] == "multiple_choice"
+    assert data["questions"][0]["text"] == "What is 2 + 2?"
+    assert len(data["questions"][0]["answer_choices"]) == 2
+
+    assert data["questions"][1]["position"] == 2
+    assert data["questions"][1]["question_type"] == "written_answer"
+    assert data["questions"][1]["text"] == "Explain closures."
+    assert data["questions"][1]["answer_choices"] == []
