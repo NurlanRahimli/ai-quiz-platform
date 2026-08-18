@@ -6,6 +6,7 @@ import RegisterPage from "./pages/auth/RegisterPage"
 import DashboardPage from "./pages/dashboard/DashboardPage"
 import CreateQuizPage from "./pages/quizzes/CreateQuizPage"
 import EditQuizPage from "./pages/quizzes/EditQuizPage"
+import TakeQuizPage from "./pages/quizzes/TakeQuizPage"
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/quizzes/new" element={<CreateQuizPage />} />
         <Route path="/quizzes/:quizId" element={<EditQuizPage />} />
+        <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
       </Route>
     </Routes>
   )

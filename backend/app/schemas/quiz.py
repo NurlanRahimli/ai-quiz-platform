@@ -52,3 +52,30 @@ class QuizResponse(BaseModel):
 
 class QuizDetailResponse(QuizResponse):
     questions: list[QuestionResponse]
+
+
+class QuizTakeAnswerChoiceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    text: str
+    position: int
+
+
+class QuizTakeQuestionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    text: str
+    question_type: str
+    position: int
+    answer_choices: list[QuizTakeAnswerChoiceResponse]
+
+
+class QuizTakeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    description: str | None
+    questions: list[QuizTakeQuestionResponse]
