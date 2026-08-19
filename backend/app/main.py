@@ -4,6 +4,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.quizzes import router as quizzes_router
 from app.api.v1.questions import router as questions_router
 from app.api.v1.attempts import router as attempts_router
+from app.core.config import settings
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -35,9 +36,7 @@ app.include_router(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-    ],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
