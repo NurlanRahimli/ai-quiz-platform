@@ -73,14 +73,15 @@ class WrittenAnswerQuestionCreate(BaseModel):
 
 class MathWorkQuestionCreate(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
+    expected_answer: str = Field(min_length=1, max_length=1000)
 
-    @field_validator("text")
+    @field_validator("text", "expected_answer")
     @classmethod
-    def validate_text(cls, value: str) -> str:
+    def validate_text_fields(cls, value: str) -> str:
         value = value.strip()
 
         if not value:
-            raise ValueError("Question cannot be empty")
+            raise ValueError("Field cannot be empty")
 
         return value
 
@@ -97,6 +98,21 @@ class QuestionTextUpdate(BaseModel):
             raise ValueError("Question cannot be empty")
 
         return value
+
+
+class MathWorkQuestionUpdate(QuestionTextUpdate):
+    expected_answer: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("expected_answer")
+    @classmethod
+    def validate_expected_answer(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Expected answer cannot be empty")
+
+        return value
+
 
 
 class MultipleChoiceQuestionUpdate(QuestionTextUpdate):
@@ -125,5 +141,6 @@ class QuestionResponse(BaseModel):
     quiz_id: uuid.UUID
     text: str
     question_type: str
+    expected_answer: str | None
     position: int
     answer_choices: list[AnswerChoiceResponse]
