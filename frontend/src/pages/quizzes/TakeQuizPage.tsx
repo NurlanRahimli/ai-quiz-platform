@@ -3,6 +3,8 @@ import type { FormEvent } from "react"
 import axios from "axios"
 import { useNavigate, useParams } from "react-router-dom"
 
+import MathWhiteboard from "../../components/quizzes/MathWhiteboard"
+
 import apiClient from "../../api/client"
 import "./TakeQuizPage.css"
 
@@ -242,16 +244,32 @@ function TakeQuizPage() {
               )}
 
               {question.question_type === "math_work" && (
-                <textarea
-                  placeholder="Show your work..."
-                  value={answers[question.id] ?? ""}
-                  onChange={(event) =>
-                    updateAnswer(
-                      question.id,
-                      event.target.value,
-                    )
-                  }
-                />
+                <div className="math-work-answer">
+                  <MathWhiteboard />
+
+                  <div className="math-final-answer">
+                    <label htmlFor={`math-answer-${question.id}`}>
+                      Final answer
+                    </label>
+
+                    <input
+                      id={`math-answer-${question.id}`}
+                      type="text"
+                      placeholder="Enter your final answer..."
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) =>
+                        updateAnswer(
+                          question.id,
+                          event.target.value,
+                        )
+                      }
+                    />
+
+                    <p>
+                      Your final answer will be used for grading.
+                    </p>
+                  </div>
+                </div>
               )}
             </section>
           ))}
