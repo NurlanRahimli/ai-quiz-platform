@@ -31,3 +31,20 @@ class QuizAttemptResponse(BaseModel):
     user_id: uuid.UUID
     submitted_at: datetime
     answers: list[QuizAttemptAnswerResponse]
+
+class QuizAttemptResultAnswer(BaseModel):
+    question_id: uuid.UUID
+    question_text: str
+    question_type: str
+    is_correct: bool | None
+    submitted_answer: str
+    correct_answer: str | None
+
+
+class QuizAttemptResultResponse(BaseModel):
+    attempt_id: uuid.UUID
+    quiz_id: uuid.UUID
+    score: int
+    gradable_questions: int
+    total_questions: int
+    answers: list[QuizAttemptResultAnswer]

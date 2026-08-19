@@ -1,0 +1,91 @@
+.quiz-results-page {
+  width: min(900px, calc(100% - 32px));
+  margin: 40px auto;
+}
+
+.results-header {
+  margin-bottom: 32px;
+}
+
+.results-header h1 {
+  margin-bottom: 16px;
+}
+
+.score-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.score-card strong {
+  font-size: 2rem;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.result-card {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.result-correct {
+  border-left: 5px solid green;
+}
+
+.result-incorrect {
+  border-left: 5px solid red;
+}
+
+.result-ungraded {
+  border-left: 5px solid #777;
+}
+
+.result-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.result-title h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.result-answer {
+  margin-top: 16px;
+}
+
+.result-answer span {
+  font-weight: 600;
+}
+
+.result-answer p {
+  margin: 6px 0 0;
+}
+
+.results-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+@media (max-width: 600px) {
+  .result-title {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .results-actions {
+    flex-direction: column;
+  }
+}
