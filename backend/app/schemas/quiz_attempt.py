@@ -48,3 +48,11 @@ class QuizAttemptResultResponse(BaseModel):
     gradable_questions: int
     total_questions: int
     answers: list[QuizAttemptResultAnswer]
+
+
+class QuizAttemptHistoryItem(BaseModel):
+    attempt_id: uuid.UUID
+    submitted_at: datetime
+    score: int
+    gradable_questions: int
+    total_questions: int

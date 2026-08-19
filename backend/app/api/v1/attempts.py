@@ -13,6 +13,7 @@ from app.models.quiz_attempt import QuizAttempt
 from app.models.quiz_attempt_answer import QuizAttemptAnswer
 from app.models.user import User
 from app.schemas.quiz_attempt import (
+    QuizAttemptHistoryItem,
     QuizAttemptResponse,
     QuizAttemptResultAnswer,
     QuizAttemptResultResponse,
@@ -163,6 +164,75 @@ def submit_quiz_attempt(
     )
 
     return saved_attempt
+
+
+@router.get(
+    "/{quiz_id}/attempts",
+    response_model=list[QuizAttemptHistoryItem],
+)
+def get_quiz_attempt_history(
+    quiz_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[QuizAttemptHistoryItem]:
+    quiz = db.scalar(
+        select(Quiz).where(
+            Quiz.id == quiz_id,
+            Quiz.owner_id == current_user.id,
+        )
+    )
+
+    if quiz is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found",
+        )
+
+    attempts = db.scalars(
+        select(QuizAttempt)
+        .options(
+            selectinload(QuizAttempt.answers)
+            .selectinload(QuizAttemptAnswer.question)
+            .selectinload(Question.answer_choices),
+            selectinload(QuizAttempt.answers)
+            .selectinload(QuizAttemptAnswer.selected_choice),
+        )
+        .where(
+            QuizAttempt.quiz_id == quiz_id,
+            QuizAttempt.user_id == current_user.id,
+        )
+        .order_by(QuizAttempt.submitted_at.desc())
+    ).all()
+
+    history: list[QuizAttemptHistoryItem] = []
+
+    for attempt in attempts:
+        score = 0
+        gradable_questions = 0
+
+        for answer in attempt.answers:
+            is_correct = grade_attempt_answer(
+                answer.question,
+                answer,
+            )
+
+            if is_correct is not None:
+                gradable_questions += 1
+
+                if is_correct:
+                    score += 1
+
+        history.append(
+            QuizAttemptHistoryItem(
+                attempt_id=attempt.id,
+                submitted_at=attempt.submitted_at,
+                score=score,
+                gradable_questions=gradable_questions,
+                total_questions=len(attempt.answers),
+            )
+        )
+
+    return history
 
 
 @router.get(

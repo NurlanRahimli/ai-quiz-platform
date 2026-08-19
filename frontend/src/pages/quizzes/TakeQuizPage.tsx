@@ -12,10 +12,6 @@ type AnswerChoice = {
   position: number
 }
 
-type AttemptResponse = {
-  id: string
-}
-
 type Question = {
   id: string
   text: string
@@ -118,7 +114,7 @@ function TakeQuizPage() {
     setError("")
 
     try {
-      const response = await apiClient.post<AttemptResponse>(
+      const response = await apiClient.post(
         `/quizzes/${quizId}/attempts`,
         {
           answers: submittedAnswers,
@@ -158,12 +154,23 @@ function TakeQuizPage() {
 
   return (
     <main className="take-quiz-page">
-      <button
-        type="button"
-        onClick={() => navigate("/dashboard")}
-      >
-        ← Back to dashboard
-      </button>
+      <div className="take-quiz-navigation">
+        <button
+          className="take-quiz-back-button"
+          type="button"
+          onClick={() => navigate("/dashboard")}
+        >
+          ← Back to dashboard
+        </button>
+
+        <button
+          className="take-quiz-history-button"
+          type="button"
+          onClick={() => navigate(`/quizzes/${quizId}/history`)}
+        >
+          View attempt history
+        </button>
+      </div>
 
       <header>
         <p>Quiz</p>

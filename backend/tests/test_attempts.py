@@ -465,3 +465,129 @@ def test_cannot_view_another_users_attempt_results(client):
     )
 
     assert response.status_code == 404
+
+
+def test_get_quiz_attempt_history(client):
+    headers = register_and_login(
+        client,
+        email="history@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    submit_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert submit_response.status_code == 201
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["attempt_id"] == submit_response.json()["id"]
+    assert data[0]["score"] == 2
+    assert data[0]["gradable_questions"] == 2
+    assert data[0]["total_questions"] == 3
+    assert data[0]["submitted_at"] is not None
+
+
+def test_quiz_attempt_history_shows_multiple_attempts(client):
+    headers = register_and_login(
+        client,
+        email="multiple-history@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    payload = {
+        "answers": [
+            {
+                "question_id": quiz["multiple_choice"]["id"],
+                "selected_choice_id": correct_choice["id"],
+            },
+            {
+                "question_id": quiz["written"]["id"],
+                "text_answer": "A variable stores a value.",
+            },
+            {
+                "question_id": quiz["math"]["id"],
+                "text_answer": "5",
+            },
+        ],
+    }
+
+    first_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json=payload,
+    )
+    second_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json=payload,
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+
+def test_cannot_view_another_users_quiz_attempt_history(client):
+    owner_headers = register_and_login(
+        client,
+        email="history-owner@example.com",
+    )
+    quiz = create_quiz_with_questions(client, owner_headers)
+
+    other_headers = register_and_login(
+        client,
+        email="history-other@example.com",
+    )
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=other_headers,
+    )
+
+    assert response.status_code == 404
