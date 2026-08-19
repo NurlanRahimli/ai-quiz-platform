@@ -35,6 +35,10 @@ class Question(Base):
         String(50),
         nullable=False,
     )
+    expected_answer: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
     position: Mapped[int] = mapped_column(
         Integer,
         nullable=False,

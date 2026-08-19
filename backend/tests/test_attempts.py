@@ -75,6 +75,7 @@ def create_quiz_with_questions(client, headers):
         headers=headers,
         json={
             "text": "Solve 2x = 10 and show your work.",
+            "expected_answer": "5",
         },
     )
     assert math_response.status_code == 201

@@ -17,6 +17,11 @@ from app.schemas.question import (
     QuestionResponse,
     QuestionTextUpdate,
     WrittenAnswerQuestionCreate,
+    MathWorkQuestionUpdate
+)
+from app.services.math_validation import (
+    MathValidationError,
+    parse_math_expression,
 )
 
 from pydantic import ValidationError
@@ -157,10 +162,19 @@ def create_math_work_question(
         )
     )
 
+    try:
+        parse_math_expression(question_data.expected_answer)
+    except MathValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Expected answer must be a valid math expression",
+        ) from exc
+
     question = Question(
         quiz_id=quiz.id,
         text=question_data.text,
         question_type="math_work",
+        expected_answer=question_data.expected_answer,
         position=(current_position or 0) + 1,
     )
 
@@ -223,14 +237,35 @@ def update_question(
                 start=1,
             )
         )
+    elif question.question_type == "math_work":
+        try:
+            validated = MathWorkQuestionUpdate.model_validate(
+                question_data
+            )
+            parse_math_expression(validated.expected_answer)
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=exc.errors(include_context=False),
+            ) from exc
+        except MathValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Expected answer must be a valid math expression",
+            ) from exc
+
+        question.text = validated.text
+        question.expected_answer = validated.expected_answer
+
     else:
         try:
             validated = QuestionTextUpdate.model_validate(question_data)
         except ValidationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=exc.errors(),
+                detail=exc.errors(include_context=False),
             ) from exc
+
         question.text = validated.text
 
     db.commit()

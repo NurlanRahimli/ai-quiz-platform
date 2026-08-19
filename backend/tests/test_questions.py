@@ -437,6 +437,7 @@ def test_create_math_work_question(client):
         headers=headers,
         json={
             "text": "Solve 2x + 6 = 14 and show your work.",
+            "expected_answer": "4",
         },
     )
 
@@ -483,6 +484,7 @@ def test_cannot_add_math_work_question_to_another_users_quiz(client):
         headers=other_headers,
         json={
             "text": "Solve x + 5 = 10.",
+            "expected_answer": "5",
         },
     )
 
@@ -540,6 +542,7 @@ def test_all_question_types_share_positions(client):
         headers=headers,
         json={
             "text": "Solve 3x + 2 = 11 and show your work.",
+            "expected_answer": "3",
         },
     )
 
@@ -672,6 +675,7 @@ def test_update_math_work_question(client):
         headers=headers,
         json={
             "text": "Solve x + 1 = 2.",
+            "expected_answer": "1",
         },
     )
 
@@ -683,6 +687,7 @@ def test_update_math_work_question(client):
         headers=headers,
         json={
             "text": "Solve 4x + 8 = 24 and show your work.",
+            "expected_answer": "4",
         },
     )
 
@@ -871,3 +876,36 @@ def test_cannot_delete_another_users_question(client):
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Question not found"
+
+
+def test_math_work_question_rejects_invalid_expected_answer(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=headers,
+        json={
+            "text": "Simplify this expression.",
+            "expected_answer": "this is not math !!!",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_math_work_question_stores_expected_answer(client):
+    headers = register_and_login(client)
+    quiz_id = create_quiz(client, headers)
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=headers,
+        json={
+            "text": "Simplify 2x + 2x.",
+            "expected_answer": "4x",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["expected_answer"] == "4x"
