@@ -280,3 +280,188 @@ def test_submit_attempt_requires_authentication(client):
     )
 
     assert response.status_code == 401
+
+
+def test_get_quiz_attempt_results(client):
+    headers = register_and_login(client)
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    submit_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert submit_response.status_code == 201
+    attempt_id = submit_response.json()["id"]
+
+    response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt_id}/results"
+        ),
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["attempt_id"] == attempt_id
+    assert data["quiz_id"] == quiz["quiz_id"]
+    assert data["score"] == 2
+    assert data["gradable_questions"] == 2
+    assert data["total_questions"] == 3
+
+    results = {
+        answer["question_type"]: answer
+        for answer in data["answers"]
+    }
+
+    assert results["multiple_choice"]["is_correct"] is True
+    assert results["multiple_choice"]["submitted_answer"] == "4"
+    assert results["multiple_choice"]["correct_answer"] == "4"
+
+    assert results["math_work"]["is_correct"] is True
+    assert results["math_work"]["submitted_answer"] == "5"
+    assert results["math_work"]["correct_answer"] == "5"
+
+    assert results["written_answer"]["is_correct"] is None
+    assert results["written_answer"]["correct_answer"] is None
+
+
+def test_results_show_incorrect_answers(client):
+    headers = register_and_login(client)
+    quiz = create_quiz_with_questions(client, headers)
+
+    incorrect_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if not choice["is_correct"]
+    )
+
+    submit_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": incorrect_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "My written response.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "7",
+                },
+            ],
+        },
+    )
+
+    assert submit_response.status_code == 201
+    attempt_id = submit_response.json()["id"]
+
+    response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt_id}/results"
+        ),
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["score"] == 0
+    assert data["gradable_questions"] == 2
+    assert data["total_questions"] == 3
+
+    graded_answers = [
+        answer
+        for answer in data["answers"]
+        if answer["is_correct"] is not None
+    ]
+
+    assert len(graded_answers) == 2
+    assert all(
+        answer["is_correct"] is False
+        for answer in graded_answers
+    )
+
+
+def test_cannot_view_another_users_attempt_results(client):
+    owner_headers = register_and_login(
+        client,
+        email="results-owner@example.com",
+    )
+    quiz = create_quiz_with_questions(client, owner_headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    submit_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=owner_headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "Owner response.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert submit_response.status_code == 201
+    attempt_id = submit_response.json()["id"]
+
+    other_headers = register_and_login(
+        client,
+        email="results-other@example.com",
+    )
+
+    response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt_id}/results"
+        ),
+        headers=other_headers,
+    )
+
+    assert response.status_code == 404

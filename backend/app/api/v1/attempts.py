@@ -14,8 +14,11 @@ from app.models.quiz_attempt_answer import QuizAttemptAnswer
 from app.models.user import User
 from app.schemas.quiz_attempt import (
     QuizAttemptResponse,
+    QuizAttemptResultAnswer,
+    QuizAttemptResultResponse,
     QuizAttemptSubmit,
 )
+from app.services.quiz_grading import grade_attempt_answer
 
 
 router = APIRouter(
@@ -160,3 +163,100 @@ def submit_quiz_attempt(
     )
 
     return saved_attempt
+
+
+@router.get(
+    "/{quiz_id}/attempts/{attempt_id}/results",
+    response_model=QuizAttemptResultResponse,
+)
+def get_quiz_attempt_results(
+    quiz_id: uuid.UUID,
+    attempt_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QuizAttemptResultResponse:
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .options(
+            selectinload(QuizAttempt.answers)
+            .selectinload(QuizAttemptAnswer.question)
+            .selectinload(Question.answer_choices),
+            selectinload(QuizAttempt.answers)
+            .selectinload(QuizAttemptAnswer.selected_choice),
+        )
+        .where(
+            QuizAttempt.id == attempt_id,
+            QuizAttempt.quiz_id == quiz_id,
+            QuizAttempt.user_id == current_user.id,
+        )
+    )
+
+    if attempt is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz attempt not found",
+        )
+
+    result_answers: list[QuizAttemptResultAnswer] = []
+    score = 0
+    gradable_questions = 0
+
+    for answer in attempt.answers:
+        question = answer.question
+        is_correct = grade_attempt_answer(question, answer)
+
+        if is_correct is not None:
+            gradable_questions += 1
+
+            if is_correct:
+                score += 1
+
+        if question.question_type == "multiple_choice":
+            submitted_answer = (
+                answer.selected_choice.text
+                if answer.selected_choice
+                else ""
+            )
+
+            correct_choice = next(
+                (
+                    choice
+                    for choice in question.answer_choices
+                    if choice.is_correct
+                ),
+                None,
+            )
+
+            correct_answer = (
+                correct_choice.text
+                if correct_choice
+                else None
+            )
+
+        elif question.question_type == "math_work":
+            submitted_answer = answer.text_answer or ""
+            correct_answer = question.expected_answer
+
+        else:
+            submitted_answer = answer.text_answer or ""
+            correct_answer = None
+
+        result_answers.append(
+            QuizAttemptResultAnswer(
+                question_id=question.id,
+                question_text=question.text,
+                question_type=question.question_type,
+                is_correct=is_correct,
+                submitted_answer=submitted_answer,
+                correct_answer=correct_answer,
+            )
+        )
+
+    return QuizAttemptResultResponse(
+        attempt_id=attempt.id,
+        quiz_id=attempt.quiz_id,
+        score=score,
+        gradable_questions=gradable_questions,
+        total_questions=len(attempt.answers),
+        answers=result_answers,
+    )

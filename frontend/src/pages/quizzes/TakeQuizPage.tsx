@@ -12,6 +12,10 @@ type AnswerChoice = {
   position: number
 }
 
+type AttemptResponse = {
+  id: string
+}
+
 type Question = {
   id: string
   text: string
@@ -38,7 +42,6 @@ function TakeQuizPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitSuccess, setSubmitSuccess] = useState("")
 
   useEffect(() => {
     const loadQuiz = async () => {
@@ -113,17 +116,19 @@ function TakeQuizPage() {
 
     setIsSubmitting(true)
     setError("")
-    setSubmitSuccess("")
 
     try {
-      await apiClient.post(
+      const response = await apiClient.post<AttemptResponse>(
         `/quizzes/${quizId}/attempts`,
         {
           answers: submittedAnswers,
         },
       )
 
-      setSubmitSuccess("Quiz submitted successfully.")
+      navigate(
+        `/quizzes/${quizId}/attempts/${response.data.id}/results`,
+        { replace: true },
+      )
     } catch (requestError) {
       if (axios.isAxiosError(requestError)) {
         const detail = requestError.response?.data?.detail
@@ -178,11 +183,6 @@ function TakeQuizPage() {
         </p>
       )}
 
-      {submitSuccess && (
-        <p role="status">
-          {submitSuccess}
-        </p>
-      )}
       {quiz.questions.length === 0 ? (
         <p>This quiz doesn't have any questions yet.</p>
       ) : (
