@@ -47,3 +47,58 @@
     width: 100%;
   }
 }
+
+
+.math-work-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.math-final-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.math-final-answer label {
+  color: #1f2937;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.math-final-answer input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.85rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.math-final-answer input::placeholder {
+  color: #94a3b8;
+}
+
+.math-final-answer input:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.math-final-answer p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .math-whiteboard-canvas {
+    height: 260px;
+  }
+}
