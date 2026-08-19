@@ -8,6 +8,7 @@ import CreateQuizPage from "./pages/quizzes/CreateQuizPage"
 import EditQuizPage from "./pages/quizzes/EditQuizPage"
 import TakeQuizPage from "./pages/quizzes/TakeQuizPage"
 import QuizResultsPage from "./pages/quizzes/QuizResultsPage"
+import QuizAttemptHistoryPage from "./pages/quizzes/QuizAttemptHistoryPage"
 
 function App() {
   return (
@@ -23,6 +24,10 @@ function App() {
         <Route path="/quizzes/:quizId" element={<EditQuizPage />} />
         <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
         <Route path="/quizzes/:quizId/attempts/:attemptId/results" element={<QuizResultsPage />} />
+        <Route
+          path="/quizzes/:quizId/history"
+          element={<QuizAttemptHistoryPage />}
+        />
       </Route>
     </Routes>
   )

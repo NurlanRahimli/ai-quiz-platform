@@ -1,0 +1,49 @@
+.take-quiz-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.take-quiz-back-button {
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  color: #626262;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.take-quiz-back-button:hover {
+  color: #171717;
+}
+
+.take-quiz-history-button {
+  border: 1px solid #d7d7d7;
+  border-radius: 9px;
+  background: #fff;
+  padding: 10px 14px;
+  color: #252525;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.take-quiz-history-button:hover {
+  background: #f4f4f4;
+  border-color: #bdbdbd;
+}
+
+@media (max-width: 600px) {
+  .take-quiz-navigation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .take-quiz-history-button {
+    width: 100%;
+  }
+}

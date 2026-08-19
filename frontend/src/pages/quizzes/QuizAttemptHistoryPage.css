@@ -1,0 +1,249 @@
+.attempt-history-page {
+  min-height: 100vh;
+  background: #f7f8fa;
+  color: #171717;
+  padding: 48px 24px 80px;
+}
+
+.attempt-history-container {
+  width: min(100%, 1050px);
+  margin: 0 auto;
+}
+
+.history-back-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin-bottom: 42px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #626262;
+  cursor: pointer;
+}
+
+.history-back-button:hover {
+  color: #111;
+}
+
+.attempt-history-header {
+  margin-bottom: 32px;
+}
+
+.history-eyebrow {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b6b6b;
+}
+
+.attempt-history-header h1 {
+  margin: 0;
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.history-description {
+  max-width: 620px;
+  margin: 16px 0 0;
+  color: #666;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.history-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px;
+  margin-bottom: 22px;
+  background: #fff;
+  border: 1px solid #e1e1e1;
+  border-radius: 16px;
+}
+
+.history-summary > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.history-summary-number {
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.history-summary-label {
+  color: #6b6b6b;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.history-take-button,
+.history-empty button {
+  border: 0;
+  border-radius: 10px;
+  background: #171717;
+  color: white;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.history-take-button:hover,
+.history-empty button:hover {
+  transform: translateY(-1px);
+  opacity: 0.88;
+}
+
+.history-list {
+  display: grid;
+  gap: 14px;
+}
+
+.history-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 30px;
+  padding: 24px 26px;
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  border-radius: 16px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.history-card:hover {
+  border-color: #c8c8c8;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.history-card-main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.history-attempt-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f1f1f1;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.history-card-main h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+}
+
+.history-card-main p {
+  margin: 0;
+  color: #777;
+  font-size: 14px;
+}
+
+.history-card-score {
+  min-width: 110px;
+  text-align: right;
+}
+
+.history-card-score strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 22px;
+}
+
+.history-card-score span {
+  color: #777;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.history-results-button {
+  border: 1px solid #d7d7d7;
+  border-radius: 9px;
+  background: #fff;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.history-results-button:hover {
+  background: #f4f4f4;
+  border-color: #bdbdbd;
+}
+
+.history-empty {
+  padding: 64px 30px;
+  background: #fff;
+  border: 1px dashed #d1d1d1;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.history-empty h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.history-empty p {
+  max-width: 450px;
+  margin: 0 auto 24px;
+  color: #707070;
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .attempt-history-page {
+    padding: 28px 16px 60px;
+  }
+
+  .history-back-button {
+    margin-bottom: 30px;
+  }
+
+  .history-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .history-take-button {
+    width: 100%;
+  }
+
+  .history-card {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .history-card-score {
+    padding-top: 16px;
+    border-top: 1px solid #ededed;
+    text-align: left;
+  }
+
+  .history-results-button {
+    width: 100%;
+  }
+}
