@@ -66,6 +66,8 @@ type QuizForm = {
   description: string
 }
 
+const QUESTIONS_PER_BATCH = 10
+
 function EditQuizPage() {
   const { quizId } = useParams()
   const navigate = useNavigate()
@@ -78,6 +80,7 @@ function EditQuizPage() {
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [visibleQuestionCount, setVisibleQuestionCount] = useState(QUESTIONS_PER_BATCH)
   const [error, setError] = useState("")
   const [questionError, setQuestionError] = useState("")
   const [newQuestionError, setNewQuestionError] = useState("")
@@ -94,6 +97,8 @@ function EditQuizPage() {
   const [editingExpectedAnswer, setEditingExpectedAnswer] = useState("")
   const [isSavingQuestion, setIsSavingQuestion] = useState(false)
   const questionCount = quiz?.questions.length ?? 0;
+  const visibleQuestions = quiz?.questions.slice(0, visibleQuestionCount) ?? []
+  const hasMoreQuestions = visibleQuestionCount < questionCount
 
   const [isAddingQuestion, setIsAddingQuestion] = useState(false)
   const [newQuestionType, setNewQuestionType] =
@@ -669,6 +674,26 @@ function EditQuizPage() {
     )
   }
 
+
+  const handleQuestionListScroll = (
+    event: React.UIEvent<HTMLDivElement>,
+  ) => {
+    if (!hasMoreQuestions) {
+      return
+    }
+
+    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
+
+    const isNearBottom =
+      scrollHeight - scrollTop - clientHeight < 120
+
+    if (isNearBottom) {
+      setVisibleQuestionCount((current) =>
+        Math.min(current + QUESTIONS_PER_BATCH, questionCount),
+      )
+    }
+  }
+
   return (
     <main className="edit-quiz-page">
       <div className="edit-quiz-page__container">
@@ -831,14 +856,17 @@ function EditQuizPage() {
             </Button>
           </div>
 
-          <div className="question-list">
+          <div 
+            className="question-list"
+            onScroll={handleQuestionListScroll}
+          >
             {quiz.questions.length === 0 && !isAddingQuestion && (
               <p className="empty-questions">
                 This quiz doesn't have any questions yet.
               </p>
             )}
 
-            {quiz.questions.map((question) => {
+            {visibleQuestions.map((question) => {
               const isEditing = editingQuestionId === question.id;
 
               return (
