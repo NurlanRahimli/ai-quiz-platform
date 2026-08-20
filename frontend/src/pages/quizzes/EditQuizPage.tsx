@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import {
@@ -99,6 +99,7 @@ function EditQuizPage() {
   const questionCount = quiz?.questions.length ?? 0;
   const visibleQuestions = quiz?.questions.slice(0, visibleQuestionCount) ?? []
   const hasMoreQuestions = visibleQuestionCount < questionCount
+  const newQuestionCardRef = useRef<HTMLDivElement>(null)
 
   const [isAddingQuestion, setIsAddingQuestion] = useState(false)
   const [newQuestionType, setNewQuestionType] =
@@ -128,6 +129,18 @@ function EditQuizPage() {
       year: "numeric",
     })
     : "";
+
+
+  useEffect(() => {
+    if (!isAddingQuestion) {
+      return
+    }
+
+    newQuestionCardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    })
+  }, [isAddingQuestion])
 
 
   useEffect(() => {
@@ -856,7 +869,7 @@ function EditQuizPage() {
             </Button>
           </div>
 
-          <div 
+          <div
             className="question-list"
             onScroll={handleQuestionListScroll}
           >
@@ -1042,278 +1055,280 @@ function EditQuizPage() {
               );
             })}
             {isAddingQuestion && (
-              <Card className="new-question-card">
-                <div className="new-question-card__header">
-                  <div>
-                    <div className="new-question-card__eyebrow">
-                      <Plus size={15} strokeWidth={2.2} aria-hidden="true" />
-                      New question
-                    </div>
-
-                    <h3>Add a question</h3>
-
-                    <p>
-                      Choose a question type and enter the question details.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="new-question-card__close"
-                    onClick={resetNewQuestion}
-                    aria-label="Cancel adding question"
-                    disabled={isCreatingQuestion}
-                  >
-                    <X size={19} strokeWidth={2} aria-hidden="true" />
-                  </button>
-                </div>
-
-                {newQuestionError && (
-                  <div className="form-message form-error" role="alert">
-                    {newQuestionError}
-                  </div>
-                )}
-
-                <div className="new-question-type">
-                  <p className="new-question-type__label">
-                    Question type
-                  </p>
-
-                  <div className="new-question-type__options">
-                    <button
-                      type="button"
-                      className={`new-question-type__option ${newQuestionType === "multiple_choice"
-                          ? "new-question-type__option--active"
-                          : ""
-                        }`}
-                      onClick={() => setNewQuestionType("multiple_choice")}
-                    >
-                      <ListChecks size={19} strokeWidth={2} aria-hidden="true" />
-
-                      <span>
-                        <strong>Multiple choice</strong>
-                        <small>Choose one correct answer</small>
-                      </span>
-
-                      {newQuestionType === "multiple_choice" && (
-                        <Check
-                          className="new-question-type__check"
-                          size={17}
-                          strokeWidth={2.4}
-                          aria-hidden="true"
-                        />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`new-question-type__option ${newQuestionType === "written_answer"
-                          ? "new-question-type__option--active"
-                          : ""
-                        }`}
-                      onClick={() => setNewQuestionType("written_answer")}
-                    >
-                      <PenLine size={19} strokeWidth={2} aria-hidden="true" />
-
-                      <span>
-                        <strong>Written answer</strong>
-                        <small>Student writes a response</small>
-                      </span>
-
-                      {newQuestionType === "written_answer" && (
-                        <Check
-                          className="new-question-type__check"
-                          size={17}
-                          strokeWidth={2.4}
-                          aria-hidden="true"
-                        />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`new-question-type__option ${newQuestionType === "math_work"
-                          ? "new-question-type__option--active"
-                          : ""
-                        }`}
-                      onClick={() => setNewQuestionType("math_work")}
-                    >
-                      <Calculator size={19} strokeWidth={2} aria-hidden="true" />
-
-                      <span>
-                        <strong>Math work</strong>
-                        <small>Show work and submit an answer</small>
-                      </span>
-
-                      {newQuestionType === "math_work" && (
-                        <Check
-                          className="new-question-type__check"
-                          size={17}
-                          strokeWidth={2.4}
-                          aria-hidden="true"
-                        />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="new-question-field">
-                  <label htmlFor="new-question-text">
-                    Question
-                  </label>
-
-                  <textarea
-                    id="new-question-text"
-                    value={newQuestionText}
-                    maxLength={2000}
-                    placeholder={
-                      newQuestionType === "math_work"
-                        ? "e.g. Solve for x: 2x + 6 = 18"
-                        : newQuestionType === "written_answer"
-                          ? "e.g. Explain what a Python function does."
-                          : "e.g. Which keyword defines a function in Python?"
-                    }
-                    onChange={(event) => {
-                      setNewQuestionText(event.target.value)
-                      setNewQuestionError("")
-                    }}
-                  />
-
-                  <span className="new-question-field__count">
-                    {newQuestionText.length}/2000
-                  </span>
-                </div>
-
-                {newQuestionType === "multiple_choice" && (
-                  <div className="new-question-choices">
-                    <div className="new-question-choices__heading">
-                      <div>
-                        <h4>Answer choices</h4>
-                        <p>Select the correct answer.</p>
+              <div ref={newQuestionCardRef}>
+                <Card className="new-question-card">
+                  <div className="new-question-card__header">
+                    <div>
+                      <div className="new-question-card__eyebrow">
+                        <Plus size={15} strokeWidth={2.2} aria-hidden="true" />
+                        New question
                       </div>
 
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={addNewChoice}
-                      >
-                        <Plus size={16} strokeWidth={2} aria-hidden="true" />
-                        Add choice
-                      </Button>
+                      <h3>Add a question</h3>
+
+                      <p>
+                        Choose a question type and enter the question details.
+                      </p>
                     </div>
 
-                    <div className="new-question-choices__list">
-                      {newQuestionChoices.map((choice, index) => (
-                        <div
-                          className={`new-question-choice ${choice.is_correct
-                              ? "new-question-choice--correct"
-                              : ""
-                            }`}
-                          key={choice.id}
-                        >
-                          <label className="new-question-choice__correct">
-                            <input
-                              type="radio"
-                              name="new-question-correct-answer"
-                              checked={choice.is_correct}
-                              onChange={() =>
-                                selectNewCorrectChoice(choice.id)
-                              }
-                            />
+                    <button
+                      type="button"
+                      className="new-question-card__close"
+                      onClick={resetNewQuestion}
+                      aria-label="Cancel adding question"
+                      disabled={isCreatingQuestion}
+                    >
+                      <X size={19} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  </div>
 
-                            <span className="new-question-choice__number">
-                              {index + 1}
-                            </span>
-                          </label>
+                  {newQuestionError && (
+                    <div className="form-message form-error" role="alert">
+                      {newQuestionError}
+                    </div>
+                  )}
 
-                          <input
-                            className="new-question-choice__input"
-                            type="text"
-                            value={choice.text}
-                            maxLength={1000}
-                            placeholder={`Answer choice ${index + 1}`}
-                            onChange={(event) =>
-                              updateNewChoiceText(
-                                choice.id,
-                                event.target.value,
-                              )
-                            }
+                  <div className="new-question-type">
+                    <p className="new-question-type__label">
+                      Question type
+                    </p>
+
+                    <div className="new-question-type__options">
+                      <button
+                        type="button"
+                        className={`new-question-type__option ${newQuestionType === "multiple_choice"
+                          ? "new-question-type__option--active"
+                          : ""
+                          }`}
+                        onClick={() => setNewQuestionType("multiple_choice")}
+                      >
+                        <ListChecks size={19} strokeWidth={2} aria-hidden="true" />
+
+                        <span>
+                          <strong>Multiple choice</strong>
+                          <small>Choose one correct answer</small>
+                        </span>
+
+                        {newQuestionType === "multiple_choice" && (
+                          <Check
+                            className="new-question-type__check"
+                            size={17}
+                            strokeWidth={2.4}
+                            aria-hidden="true"
                           />
+                        )}
+                      </button>
 
-                          <button
-                            type="button"
-                            className="new-question-choice__remove"
-                            onClick={() => removeNewChoice(choice.id)}
-                            disabled={newQuestionChoices.length <= 2}
-                            aria-label={`Remove answer choice ${index + 1}`}
-                          >
-                            <Trash2
-                              size={17}
-                              strokeWidth={2}
-                              aria-hidden="true"
-                            />
-                          </button>
-                        </div>
-                      ))}
+                      <button
+                        type="button"
+                        className={`new-question-type__option ${newQuestionType === "written_answer"
+                          ? "new-question-type__option--active"
+                          : ""
+                          }`}
+                        onClick={() => setNewQuestionType("written_answer")}
+                      >
+                        <PenLine size={19} strokeWidth={2} aria-hidden="true" />
+
+                        <span>
+                          <strong>Written answer</strong>
+                          <small>Student writes a response</small>
+                        </span>
+
+                        {newQuestionType === "written_answer" && (
+                          <Check
+                            className="new-question-type__check"
+                            size={17}
+                            strokeWidth={2.4}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`new-question-type__option ${newQuestionType === "math_work"
+                          ? "new-question-type__option--active"
+                          : ""
+                          }`}
+                        onClick={() => setNewQuestionType("math_work")}
+                      >
+                        <Calculator size={19} strokeWidth={2} aria-hidden="true" />
+
+                        <span>
+                          <strong>Math work</strong>
+                          <small>Show work and submit an answer</small>
+                        </span>
+
+                        {newQuestionType === "math_work" && (
+                          <Check
+                            className="new-question-type__check"
+                            size={17}
+                            strokeWidth={2.4}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
                     </div>
                   </div>
-                )}
 
-                {newQuestionType === "math_work" && (
                   <div className="new-question-field">
-                    <label htmlFor="new-question-expected-answer">
-                      Expected answer
+                    <label htmlFor="new-question-text">
+                      Question
                     </label>
 
-                    <input
-                      id="new-question-expected-answer"
-                      type="text"
-                      value={newExpectedAnswer}
-                      maxLength={1000}
-                      placeholder="e.g. 6"
+                    <textarea
+                      id="new-question-text"
+                      value={newQuestionText}
+                      maxLength={2000}
+                      placeholder={
+                        newQuestionType === "math_work"
+                          ? "e.g. Solve for x: 2x + 6 = 18"
+                          : newQuestionType === "written_answer"
+                            ? "e.g. Explain what a Python function does."
+                            : "e.g. Which keyword defines a function in Python?"
+                      }
                       onChange={(event) => {
-                        setNewExpectedAnswer(event.target.value)
+                        setNewQuestionText(event.target.value)
                         setNewQuestionError("")
                       }}
                     />
 
-                    <span className="new-question-field__help">
-                      Enter the mathematical answer students should reach.
+                    <span className="new-question-field__count">
+                      {newQuestionText.length}/2000
                     </span>
                   </div>
-                )}
 
-                {newQuestionType === "written_answer" && (
-                  <div className="new-question-info">
-                    <Info size={18} strokeWidth={2} aria-hidden="true" />
+                  {newQuestionType === "multiple_choice" && (
+                    <div className="new-question-choices">
+                      <div className="new-question-choices__heading">
+                        <div>
+                          <h4>Answer choices</h4>
+                          <p>Select the correct answer.</p>
+                        </div>
 
-                    <p>
-                      Written answers don't require a predefined correct answer.
-                      The student will enter their response when taking the quiz.
-                    </p>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={addNewChoice}
+                        >
+                          <Plus size={16} strokeWidth={2} aria-hidden="true" />
+                          Add choice
+                        </Button>
+                      </div>
+
+                      <div className="new-question-choices__list">
+                        {newQuestionChoices.map((choice, index) => (
+                          <div
+                            className={`new-question-choice ${choice.is_correct
+                              ? "new-question-choice--correct"
+                              : ""
+                              }`}
+                            key={choice.id}
+                          >
+                            <label className="new-question-choice__correct">
+                              <input
+                                type="radio"
+                                name="new-question-correct-answer"
+                                checked={choice.is_correct}
+                                onChange={() =>
+                                  selectNewCorrectChoice(choice.id)
+                                }
+                              />
+
+                              <span className="new-question-choice__number">
+                                {index + 1}
+                              </span>
+                            </label>
+
+                            <input
+                              className="new-question-choice__input"
+                              type="text"
+                              value={choice.text}
+                              maxLength={1000}
+                              placeholder={`Answer choice ${index + 1}`}
+                              onChange={(event) =>
+                                updateNewChoiceText(
+                                  choice.id,
+                                  event.target.value,
+                                )
+                              }
+                            />
+
+                            <button
+                              type="button"
+                              className="new-question-choice__remove"
+                              onClick={() => removeNewChoice(choice.id)}
+                              disabled={newQuestionChoices.length <= 2}
+                              aria-label={`Remove answer choice ${index + 1}`}
+                            >
+                              <Trash2
+                                size={17}
+                                strokeWidth={2}
+                                aria-hidden="true"
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {newQuestionType === "math_work" && (
+                    <div className="new-question-field">
+                      <label htmlFor="new-question-expected-answer">
+                        Expected answer
+                      </label>
+
+                      <input
+                        id="new-question-expected-answer"
+                        type="text"
+                        value={newExpectedAnswer}
+                        maxLength={1000}
+                        placeholder="e.g. 6"
+                        onChange={(event) => {
+                          setNewExpectedAnswer(event.target.value)
+                          setNewQuestionError("")
+                        }}
+                      />
+
+                      <span className="new-question-field__help">
+                        Enter the mathematical answer students should reach.
+                      </span>
+                    </div>
+                  )}
+
+                  {newQuestionType === "written_answer" && (
+                    <div className="new-question-info">
+                      <Info size={18} strokeWidth={2} aria-hidden="true" />
+
+                      <p>
+                        Written answers don't require a predefined correct answer.
+                        The student will enter their response when taking the quiz.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="new-question-card__actions">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={resetNewQuestion}
+                      disabled={isCreatingQuestion}
+                    >
+                      Cancel
+                    </Button>
+
+                    <Button
+                      type="button"
+                      loading={isCreatingQuestion}
+                      onClick={() => void createQuestion()}
+                    >
+                      <Plus size={17} strokeWidth={2} aria-hidden="true" />
+                      Add question
+                    </Button>
                   </div>
-                )}
-
-                <div className="new-question-card__actions">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={resetNewQuestion}
-                    disabled={isCreatingQuestion}
-                  >
-                    Cancel
-                  </Button>
-
-                  <Button
-                    type="button"
-                    loading={isCreatingQuestion}
-                    onClick={() => void createQuestion()}
-                  >
-                    <Plus size={17} strokeWidth={2} aria-hidden="true" />
-                    Add question
-                  </Button>
-                </div>
-              </Card>
+                </Card>
+              </div>
             )}
           </div>
         </section>
