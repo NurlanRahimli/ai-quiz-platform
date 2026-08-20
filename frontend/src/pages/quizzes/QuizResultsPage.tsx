@@ -3,7 +3,7 @@ import axios from "axios"
 import { useNavigate, useParams } from "react-router-dom"
 
 import apiClient from "../../api/client"
-import "./QuizResultsPage.css"
+import "../../styles/pages/quizzes/QuizResultsPage.css"
 
 type AnswerResult = {
   question_id: string

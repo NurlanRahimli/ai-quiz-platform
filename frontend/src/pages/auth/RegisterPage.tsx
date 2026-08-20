@@ -4,7 +4,7 @@ import axios from "axios"
 import { Link } from "react-router-dom"
 
 import apiClient from "../../api/client"
-import "./RegisterPage.css"
+import "../../styles/pages/auth/RegisterPage.css"
 
 type RegisterForm = {
   displayName: string

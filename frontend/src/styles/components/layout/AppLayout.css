@@ -1,0 +1,143 @@
+.app-layout {
+  min-height: 100vh;
+  background: var(--color-background);
+}
+
+/* Main content */
+
+.app-layout__main {
+  min-height: 100vh;
+  margin-left: var(--sidebar-width);
+
+  transition:
+    margin-left var(--transition-normal),
+    background-color var(--transition-normal);
+}
+
+.app-layout__content {
+  width: 100%;
+  max-width: var(--content-max-width);
+
+  margin: 0 auto;
+  padding: var(--space-8);
+}
+
+/* Mobile header */
+
+.app-layout__mobile-header {
+  display: none;
+}
+
+.app-layout__overlay {
+  display: none;
+}
+
+/* Tablet / iPad */
+
+@media (min-width: 769px) and (max-width: 1179px) {
+  .app-layout__content {
+    width: 100%;
+    padding:
+      var(--space-5)
+      max(16px, env(safe-area-inset-right))
+      var(--space-8)
+      max(16px, env(safe-area-inset-left));
+  }
+}
+
+/* Mobile + narrow tablet portrait */
+
+@media (max-width: 768px) {
+  .app-layout__mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 var(--space-4);
+
+    background: var(--color-sidebar);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .app-layout__mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .app-layout__mobile-logo {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+
+    background: var(--gradient-primary);
+    border-radius: var(--radius-md);
+
+    color: #ffffff;
+    font-weight: var(--font-weight-bold);
+
+    box-shadow: var(--shadow-primary);
+  }
+
+  .app-layout__menu-button {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    padding: 0;
+
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-md);
+  }
+
+  .app-layout__menu-button:hover {
+    background: var(--color-surface-hover);
+  }
+
+  .app-layout__main {
+    margin-left: 0;
+  }
+
+  .app-layout__content {
+    width: 100%;
+    padding: var(--space-5) 16px var(--space-8);
+  }
+
+  .app-layout__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+
+    display: block;
+
+    background: rgb(0 0 0 / 55%);
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition:
+      opacity var(--transition-normal),
+      visibility var(--transition-normal);
+  }
+
+  .app-layout__overlay--visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { useNavigate, useParams } from "react-router-dom"
 import apiClient from "../../api/client"
-import "./QuizAttemptHistoryPage.css"
+import "../../styles/pages/quizzes/QuizAttemptHistoryPage.css"
 
 type Quiz = {
   id: string
