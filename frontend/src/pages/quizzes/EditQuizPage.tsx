@@ -825,13 +825,14 @@ function EditQuizPage() {
             </Button>
           </div>
 
-          {quiz.questions.length === 0 ? (
-            <p className="empty-questions">
-              This quiz doesn't have any questions yet.
-            </p>
-          ) : (
-            <div className="question-list">
-              {quiz.questions.map((question) => {
+          <div className="question-list">
+            {quiz.questions.length === 0 && !isAddingQuestion && (
+              <p className="empty-questions">
+                This quiz doesn't have any questions yet.
+              </p>
+            )}
+
+            {quiz.questions.map((question) => {
                 const isEditing = editingQuestionId === question.id;
 
                 return (
@@ -1274,7 +1275,6 @@ function EditQuizPage() {
                 </Card>
               )}
             </div>
-          )}
         </section>
       </div>
     </main>
