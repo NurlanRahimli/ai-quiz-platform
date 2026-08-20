@@ -349,7 +349,12 @@
 .question-list {
   display: grid;
   gap: var(--space-4);
+  max-height: 70vh;
   margin-top: var(--space-6);
+  padding-right: var(--space-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .question-card {
@@ -872,6 +877,13 @@
 /* Mobile */
 
 @media (max-width: 600px) {
+  .question-list {
+    max-height: none;
+    padding-right: 0;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
+  }
+
   .new-question-card {
     padding: var(--space-4);
   }
