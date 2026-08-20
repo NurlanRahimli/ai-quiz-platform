@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-import "./MathWhiteboard.css"
+import "../../styles/components/quizzes/MathWhiteboard.css"
 
 function MathWhiteboard() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

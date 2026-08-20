@@ -1,159 +1,284 @@
-import { useEffect, useState } from "react"
-import axios from "axios"
-import { useNavigate } from "react-router-dom"
-import apiClient from "../../api/client"
-import { useAuth } from "../../auth/useAuth"
-import "./DashboardPage.css"
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+
+import {
+  ArrowRight,
+  FileQuestion,
+  Plus,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
+
+import apiClient from "../../api/client";
+import { useAuth } from "../../auth/useAuth";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+
+import "../../styles/pages/dashboard/DashboardPage.css";
 
 type Quiz = {
-  id: string
-  owner_id: string
-  title: string
-  description: string | null
-  created_at: string
-  updated_at: string
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function DashboardPage() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const [quizzes, setQuizzes] = useState<Quiz[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [currentTime] = useState(() => Date.now());
 
   useEffect(() => {
     const loadQuizzes = async () => {
       try {
-        const response = await apiClient.get<Quiz[]>("/quizzes")
-        setQuizzes(response.data)
+        const response = await apiClient.get<Quiz[]>("/quizzes");
+        setQuizzes(response.data);
       } catch (requestError) {
         if (axios.isAxiosError(requestError)) {
-          const detail = requestError.response?.data?.detail
+          const detail = requestError.response?.data?.detail;
 
           setError(
             typeof detail === "string"
               ? detail
               : "Unable to load your quizzes",
-          )
+          );
         } else {
-          setError("Unable to load your quizzes")
+          setError("Unable to load your quizzes");
         }
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    void loadQuizzes()
-  }, [])
+    void loadQuizzes();
+  }, []);
 
-  const handleLogout = () => {
-    logout()
-    navigate("/login", { replace: true })
-  }
+  const recentlyUpdatedQuizzes = useMemo(
+    () =>
+      [...quizzes]
+        .sort(
+          (a, b) =>
+            new Date(b.updated_at).getTime() -
+            new Date(a.updated_at).getTime(),
+        )
+        .slice(0, 6),
+    [quizzes],
+  );
+
+  const recentlyCreatedCount = useMemo(() => {
+    const sevenDaysAgo = currentTime - 7 * 24 * 60 * 60 * 1000;
+
+    return quizzes.filter(
+      (quiz) => new Date(quiz.created_at).getTime() >= sevenDaysAgo,
+    ).length;
+  }, [quizzes, currentTime]);
 
   return (
-    <main className="dashboard-page">
+    <div className="dashboard-page">
       <header className="dashboard-header">
-        <div>
-          <p className="dashboard-eyebrow">AI Quiz</p>
-          <h1>Your quizzes</h1>
-          <p className="dashboard-welcome">
-            Welcome back, {user?.display_name}.
+        <div className="dashboard-header__content">
+          <p className="dashboard-eyebrow">Overview</p>
+
+          <h1>
+            Welcome back
+            {user?.display_name ? `, ${user.display_name}` : ""}.
+          </h1>
+
+          <p className="dashboard-subtitle">
+            Create, manage, and keep track of your quizzes.
           </p>
         </div>
 
-        <div className="dashboard-actions">
-          <button
-            className="dashboard-secondary-button"
-            type="button"
-            onClick={handleLogout}
-          >
-            Log out
-          </button>
-
-          <button
-            className="dashboard-primary-button"
-            type="button"
-            onClick={() => navigate("/quizzes/new")}
-          >
-            + Create quiz
-          </button>
-        </div>
+        <Button
+          size="lg"
+          onClick={() => navigate("/quizzes/new")}
+        >
+          <span aria-hidden="true">＋</span>
+          Create Quiz
+        </Button>
       </header>
 
       {error && (
-        <div className="dashboard-message dashboard-error" role="alert">
+        <div className="dashboard-error" role="alert">
           {error}
         </div>
       )}
 
-      {isLoading ? (
-        <section className="dashboard-state">
-          <p>Loading your quizzes...</p>
-        </section>
-      ) : quizzes.length === 0 ? (
-        <section className="dashboard-state dashboard-empty">
-          <h2>No quizzes yet</h2>
-          <p>Create your first quiz to get started.</p>
-
-          <button
-            className="dashboard-primary-button"
-            type="button"
-            onClick={() => navigate("/quizzes/new")}
-          >
-            Create your first quiz
-          </button>
-        </section>
-      ) : (
-        <section className="quiz-list-section">
-          <div className="quiz-list-heading">
-            <h2>
-              {quizzes.length} {quizzes.length === 1 ? "quiz" : "quizzes"}
-            </h2>
+      <section
+        className="dashboard-stats"
+        aria-label="Quiz overview"
+      >
+        <Card className="dashboard-stat-card">
+          <div className="dashboard-stat-card__icon" aria-hidden="true">
+            <FileQuestion size={22} strokeWidth={1.9} />
           </div>
 
-          <div className="quiz-grid">
-            {quizzes.map((quiz) => (
-              <article
-                className="quiz-card"
+          <div>
+            <span className="dashboard-stat-card__label">
+              Total Quizzes
+            </span>
+
+            <strong className="dashboard-stat-card__value">
+              {isLoading ? "—" : quizzes.length}
+            </strong>
+          </div>
+        </Card>
+
+        <Card className="dashboard-stat-card">
+          <div className="dashboard-stat-card__icon" aria-hidden="true">
+            <Sparkles size={22} strokeWidth={1.9} />
+          </div>
+
+          <div>
+            <span className="dashboard-stat-card__label">
+              Created This Week
+            </span>
+
+            <strong className="dashboard-stat-card__value">
+              {isLoading ? "—" : recentlyCreatedCount}
+            </strong>
+          </div>
+        </Card>
+
+        <Card className="dashboard-stat-card">
+          <div className="dashboard-stat-card__icon" aria-hidden="true">
+            <RefreshCw size={22} strokeWidth={1.9} />
+          </div>
+
+          <div>
+            <span className="dashboard-stat-card__label">
+              Recently Updated
+            </span>
+
+            <strong className="dashboard-stat-card__value">
+              {isLoading
+                ? "—"
+                : recentlyUpdatedQuizzes.length}
+            </strong>
+          </div>
+        </Card>
+      </section>
+
+      <section className="dashboard-quizzes">
+        <div className="dashboard-section-header">
+          <div>
+            <h2>Your quizzes</h2>
+
+            <p>
+              Open a quiz to edit questions, take it, or review
+              previous attempts.
+            </p>
+          </div>
+
+          {!isLoading && quizzes.length > 0 && (
+            <span className="dashboard-quiz-count">
+              {quizzes.length}{" "}
+              {quizzes.length === 1 ? "quiz" : "quizzes"}
+            </span>
+          )}
+        </div>
+
+        {isLoading ? (
+          <Card className="dashboard-state">
+            <div
+              className="dashboard-loading-spinner"
+              aria-hidden="true"
+            />
+
+            <p>Loading your quizzes...</p>
+          </Card>
+        ) : quizzes.length === 0 ? (
+          <Card className="dashboard-state dashboard-empty">
+            <div
+              className="dashboard-empty__icon"
+              aria-hidden="true"
+            >
+              <Plus size={24} strokeWidth={2} />
+            </div>
+
+            <h2>Create your first quiz</h2>
+
+            <p>
+              Your quizzes will appear here once you create one.
+            </p>
+
+            <Button
+              size="lg"
+              onClick={() => navigate("/quizzes/new")}
+            >
+              <Plus size={18} strokeWidth={2} aria-hidden="true" />
+              Create Quiz
+            </Button>
+          </Card>
+        ) : (
+          <div className="dashboard-quiz-grid">
+            {recentlyUpdatedQuizzes.map((quiz) => (
+              <Card
                 key={quiz.id}
-                tabIndex={0}
+                className="dashboard-quiz-card"
+                interactive
                 role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/quizzes/${quiz.id}`)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    navigate(`/quizzes/${quiz.id}`)
+                  if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                  ) {
+                    event.preventDefault();
+                    navigate(`/quizzes/${quiz.id}`);
                   }
                 }}
               >
-                <div className="quiz-card-content">
-                  <p className="quiz-card-label">Quiz</p>
+                <div className="dashboard-quiz-card__top">
+                  <span className="dashboard-quiz-card__badge">
+                    Quiz
+                  </span>
+
+                  <span className="dashboard-quiz-card__date">
+                    {formatDate(quiz.updated_at)}
+                  </span>
+                </div>
+
+                <div className="dashboard-quiz-card__content">
                   <h3>{quiz.title}</h3>
 
-                  <p className="quiz-card-description">
-                    {quiz.description || "No description"}
+                  <p>
+                    {quiz.description ||
+                      "No description has been added yet."}
                   </p>
                 </div>
 
-                <div className="quiz-card-footer">
-                  <span>
-                    Updated{" "}
-                    {new Date(quiz.updated_at).toLocaleDateString()}
-                  </span>
+                <div className="dashboard-quiz-card__footer">
+                  <span>Updated {formatDate(quiz.updated_at)}</span>
 
-                  <span className="quiz-open-link">
-                    Edit →
+                  <span className="dashboard-quiz-card__action">
+                    Edit
+                    <ArrowRight size={15} strokeWidth={2} aria-hidden="true" />
                   </span>
                 </div>
-              </article>
+              </Card>
             ))}
           </div>
-        </section>
-      )}
-    </main>
-  )
+        )}
+      </section>
+    </div>
+  );
 }
 
-export default DashboardPage
+export default DashboardPage;

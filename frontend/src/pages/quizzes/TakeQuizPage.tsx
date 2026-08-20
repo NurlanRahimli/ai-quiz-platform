@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import MathWhiteboard from "../../components/quizzes/MathWhiteboard"
 
 import apiClient from "../../api/client"
-import "./TakeQuizPage.css"
+import "../../styles/pages/quizzes/TakeQuizPage.css"
 
 type AnswerChoice = {
   id: string

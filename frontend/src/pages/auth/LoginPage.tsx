@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../../auth/useAuth"
 
 import apiClient from "../../api/client"
-import "./RegisterPage.css"
+import "../../styles/pages/auth/RegisterPage.css"
 
 type LoginForm = {
   email: string

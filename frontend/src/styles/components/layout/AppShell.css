@@ -1,0 +1,179 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--color-bg);
+}
+
+.app-shell__workspace {
+  min-width: 0;
+  flex: 1;
+  margin-left: var(--sidebar-width);
+}
+
+.app-shell__content {
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+
+  padding-left: max(var(--space-6), env(safe-area-inset-left));
+  padding-right: max(var(--space-6), env(safe-area-inset-right));
+}
+
+.app-shell__mobile-header {
+  display: none;
+}
+
+.app-shell__backdrop {
+  display: none;
+}
+
+
+/* -------------------- */
+/* Compact iPad/mobile */
+/* -------------------- */
+
+@media (max-width: 820px) {
+  .app-shell {
+    display: block;
+  }
+
+  .app-shell__workspace {
+    margin-left: 0;
+  }
+
+  .app-shell__mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+
+    display: flex;
+    min-height: 68px;
+    align-items: center;
+    justify-content: space-between;
+
+    padding-left: max(22px, env(safe-area-inset-left));
+    padding-right: max(22px, env(safe-area-inset-right));
+
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .app-shell__mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    color: var(--color-text);
+    font-size: 1rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+  }
+
+  .app-shell__mobile-logo {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+
+    border-radius: 10px;
+
+    background: var(--gradient-primary);
+    color: white;
+
+    font-size: 0.9rem;
+    font-weight: 800;
+
+    box-shadow: var(--shadow-primary);
+  }
+
+  .app-shell__menu-button {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+
+    padding: 0;
+
+    border: 1px solid var(--color-border);
+    border-radius: 11px;
+
+    background: var(--color-surface-elevated);
+    color: var(--color-text);
+
+    cursor: pointer;
+
+    transition:
+      background 150ms ease,
+      border-color 150ms ease,
+      transform 150ms ease;
+  }
+
+  .app-shell__menu-button:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-hover);
+  }
+
+  .app-shell__menu-button:active {
+    transform: scale(0.96);
+  }
+
+  .app-shell__menu-button:focus-visible {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  .app-shell__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+
+    display: block;
+
+    padding: 0;
+    border: 0;
+
+    background: rgb(0 0 0 / 48%);
+    cursor: default;
+  }
+
+  .app-shell__content {
+    width: 100%;
+    min-width: 0;
+    min-height: calc(100dvh - 68px);
+
+    padding-left: max(var(--space-6), env(safe-area-inset-left));
+    padding-right: max(var(--space-6), env(safe-area-inset-right));
+  }
+}
+
+/* -------------------- */
+/* Phone */
+/* -------------------- */
+
+@media (max-width: 600px) {
+  .app-shell__mobile-header {
+    min-height: 62px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .app-shell__mobile-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+
+  .app-shell__menu-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .app-shell__content {
+    width: 100%;
+    min-width: 0;
+    min-height: calc(100dvh - 62px);
+
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+}
