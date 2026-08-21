@@ -18,6 +18,7 @@ from app.schemas.quiz_attempt import (
     QuizAttemptResultAnswer,
     QuizAttemptResultResponse,
     QuizAttemptSubmit,
+    QuizAttemptResultChoice,
 )
 from app.services.quiz_grading import grade_attempt_answer
 
@@ -285,6 +286,8 @@ def get_quiz_attempt_results(
             if is_correct:
                 score += 1
 
+        answer_choices: list[QuizAttemptResultChoice] = []
+
         if question.question_type == "multiple_choice":
             submitted_answer = (
                 answer.selected_choice.text
@@ -307,6 +310,22 @@ def get_quiz_attempt_results(
                 else None
             )
 
+            answer_choices = [
+                QuizAttemptResultChoice(
+                    id=choice.id,
+                    text=choice.text,
+                    is_correct=choice.is_correct,
+                    was_selected=(
+                        choice.id == answer.selected_choice_id
+                    ),
+                    position=choice.position,
+                )
+                for choice in sorted(
+                    question.answer_choices,
+                    key=lambda choice: choice.position,
+                )
+            ]
+
         elif question.question_type == "math_work":
             submitted_answer = answer.text_answer or ""
             correct_answer = question.expected_answer
@@ -317,6 +336,7 @@ def get_quiz_attempt_results(
 
         result_answers.append(
             QuizAttemptResultAnswer(
+                answer_choices=answer_choices,
                 question_id=question.id,
                 question_text=question.text,
                 question_type=question.question_type,
