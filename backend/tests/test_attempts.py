@@ -591,3 +591,47 @@ def test_cannot_view_another_users_quiz_attempt_history(client):
     )
 
     assert response.status_code == 404
+
+
+def test_authenticated_user_can_submit_attempt_for_another_users_quiz(client):
+    owner_headers = register_and_login(
+        client,
+        email="attempt-owner@example.com",
+    )
+    quiz = create_quiz_with_questions(client, owner_headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    taker_headers = register_and_login(
+        client,
+        email="attempt-taker@example.com",
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=taker_headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "2x = 10, so x = 5.",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["quiz_id"] == quiz["quiz_id"]
+    assert len(response.json()["answers"]) == 3
