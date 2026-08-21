@@ -6,6 +6,8 @@ import { useNavigate, useParams } from "react-router-dom"
 import MathWhiteboard from "../../components/quizzes/MathWhiteboard"
 import Button from "../../components/ui/Button"
 
+import Swal from "sweetalert2"
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -185,6 +187,12 @@ function TakeQuizPage() {
     setCurrentQuestionIndex(index)
   }
 
+  const handleReviewAndSubmit = () => {
+    document
+      .querySelector<HTMLFormElement>(".take-quiz-workspace")
+      ?.requestSubmit()
+  }
+
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -193,20 +201,34 @@ function TakeQuizPage() {
       return
     }
 
-    const unansweredQuestion = quiz.questions.find(
+    const unansweredCount = quiz.questions.filter(
       (question) => !answers[question.id]?.trim(),
-    )
+    ).length
 
-    if (unansweredQuestion) {
-      setError("Please answer every question before submitting.")
-      return
+    if (unansweredCount > 0) {
+      const result = await Swal.fire({
+        icon: "warning",
+        title: "Unanswered questions",
+        text: `You have ${unansweredCount} unanswered ${unansweredCount === 1 ? "question" : "questions"
+          }. Unanswered questions will be marked incorrect. Are you sure you want to submit?`,
+        showCancelButton: true,
+        confirmButtonText: "Submit anyway",
+        cancelButtonText: "Continue quiz",
+        reverseButtons: true,
+      })
+
+      if (!result.isConfirmed) {
+        return
+      }
     }
 
     const submittedAnswers = quiz.questions.map((question) => {
+      const answer = answers[question.id]?.trim() ?? ""
+
       if (question.question_type === "multiple_choice") {
         return {
           question_id: question.id,
-          selected_choice_id: answers[question.id],
+          selected_choice_id: answer || null,
           text_answer: null,
         }
       }
@@ -214,7 +236,7 @@ function TakeQuizPage() {
       return {
         question_id: question.id,
         selected_choice_id: null,
-        text_answer: answers[question.id].trim(),
+        text_answer: answer || null,
       }
     })
 
@@ -393,8 +415,8 @@ function TakeQuizPage() {
                             return (
                               <label
                                 className={`take-answer-option ${selected
-                                    ? "take-answer-option--selected"
-                                    : ""
+                                  ? "take-answer-option--selected"
+                                  : ""
                                   }`}
                                 key={choice.id}
                               >
@@ -508,23 +530,27 @@ function TakeQuizPage() {
                       Previous
                     </Button>
 
-                    {!isLastQuestion ? (
-                      <Button
-                        type="button"
-                        onClick={goToNextQuestion}
-                      >
-                        Next
-                        <ArrowRight size={17} />
-                      </Button>
-                    ) : (
-                      <Button
-                        type="submit"
-                        loading={isSubmitting}
-                      >
-                        <CheckCircle2 size={17} />
-                        Submit quiz
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      disabled={isLastQuestion}
+                      onClick={goToNextQuestion}
+                    >
+                      Next
+                      <ArrowRight size={17} />
+                    </Button>
+                  </div>
+
+                  <div className="take-question-mobile-submit">
+                    <Button
+                      type="button"
+                      fullWidth
+                      loading={isSubmitting}
+                      disabled={isSubmitting}
+                      onClick={handleReviewAndSubmit}
+                    >
+                      <CheckCircle2 size={17} />
+                      Review & Submit
+                    </Button>
                   </div>
                 </section>
               )}
@@ -630,18 +656,7 @@ function TakeQuizPage() {
               <Button
                 type="button"
                 fullWidth
-                onClick={() => {
-                  if (isLastQuestion) {
-                    document
-                      .querySelector<HTMLFormElement>(
-                        ".take-quiz-workspace",
-                      )
-                      ?.requestSubmit()
-                    return
-                  }
-
-                  goToQuestion(questionCount - 1)
-                }}
+                onClick={handleReviewAndSubmit}
               >
                 <CheckCircle2 size={17} />
                 Review & Submit
