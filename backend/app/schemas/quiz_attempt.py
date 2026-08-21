@@ -32,6 +32,13 @@ class QuizAttemptResponse(BaseModel):
     submitted_at: datetime
     answers: list[QuizAttemptAnswerResponse]
 
+class QuizAttemptResultChoice(BaseModel):
+    id: uuid.UUID
+    text: str
+    is_correct: bool
+    was_selected: bool
+    position: int
+
 class QuizAttemptResultAnswer(BaseModel):
     question_id: uuid.UUID
     question_text: str
@@ -39,6 +46,7 @@ class QuizAttemptResultAnswer(BaseModel):
     is_correct: bool | None
     submitted_answer: str
     correct_answer: str | None
+    answer_choices: list[QuizAttemptResultChoice] = []
 
 
 class QuizAttemptResultResponse(BaseModel):

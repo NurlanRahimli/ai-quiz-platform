@@ -343,6 +343,30 @@ def test_get_quiz_attempt_results(client):
     assert results["multiple_choice"]["submitted_answer"] == "4"
     assert results["multiple_choice"]["correct_answer"] == "4"
 
+    multiple_choice_options = results["multiple_choice"]["answer_choices"]
+
+    assert len(multiple_choice_options) == len(
+        quiz["multiple_choice"]["answer_choices"]
+    )
+
+    selected_options = [
+        choice
+        for choice in multiple_choice_options
+        if choice["was_selected"]
+    ]
+
+    assert len(selected_options) == 1
+    assert selected_options[0]["id"] == correct_choice["id"]
+    assert selected_options[0]["is_correct"] is True
+
+    assert multiple_choice_options == sorted(
+        multiple_choice_options,
+        key=lambda choice: choice["position"],
+    )
+
+    assert results["math_work"]["answer_choices"] == []
+    assert results["written_answer"]["answer_choices"] == []
+
     assert results["math_work"]["is_correct"] is True
     assert results["math_work"]["submitted_answer"] == "5"
     assert results["math_work"]["correct_answer"] == "5"
@@ -396,6 +420,30 @@ def test_results_show_incorrect_answers(client):
     assert response.status_code == 200
 
     data = response.json()
+
+    results = {
+        answer["question_type"]: answer
+        for answer in data["answers"]
+    }
+
+    multiple_choice_options = results["multiple_choice"]["answer_choices"]
+
+    selected_option = next(
+        choice
+        for choice in multiple_choice_options
+        if choice["was_selected"]
+    )
+
+    correct_option = next(
+        choice
+        for choice in multiple_choice_options
+        if choice["is_correct"]
+    )
+
+    assert selected_option["id"] == incorrect_choice["id"]
+    assert selected_option["is_correct"] is False
+    assert correct_option["is_correct"] is True
+    assert correct_option["was_selected"] is False
 
     assert data["score"] == 0
     assert data["gradable_questions"] == 2
