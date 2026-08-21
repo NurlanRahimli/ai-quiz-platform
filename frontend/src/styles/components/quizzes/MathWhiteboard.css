@@ -1,0 +1,190 @@
+.math-whiteboard {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-secondary);
+}
+
+.math-whiteboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface-secondary);
+}
+
+.math-whiteboard-header h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.math-whiteboard-header p {
+    margin: 3px 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+}
+
+.math-whiteboard-clear {
+    flex: 0 0 auto;
+    padding: 7px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition:
+        border-color var(--transition-fast),
+        background var(--transition-fast),
+        color var(--transition-fast),
+        transform var(--transition-fast);
+}
+
+.math-whiteboard-clear:hover {
+    border-color: rgb(239 68 68 / 45%);
+    background: rgb(239 68 68 / 8%);
+    color: var(--color-danger);
+}
+
+.math-whiteboard-clear:active {
+    transform: scale(0.96);
+}
+
+.math-whiteboard-clear:focus-visible {
+    outline: 3px solid rgb(139 92 246 / 20%);
+    outline-offset: 2px;
+}
+
+.math-whiteboard-canvas {
+    display: block;
+    width: 100%;
+    height: 440px;
+    min-height: 440px;
+    background:
+        linear-gradient(var(--color-border-subtle) 1px,
+            transparent 1px),
+        linear-gradient(90deg,
+            var(--color-border-subtle) 1px,
+            transparent 1px),
+        #ffffff;
+    background-size: 24px 24px;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+/* Keep handwriting dark and the drawing surface paper-like
+   in both application themes. */
+
+[data-theme="dark"] .math-whiteboard-canvas {
+    background:
+        linear-gradient(rgb(226 232 240 / 14%) 1px,
+            transparent 1px),
+        linear-gradient(90deg,
+            rgb(226 232 240 / 14%) 1px,
+            transparent 1px),
+        #ffffff;
+    background-size: 24px 24px;
+}
+
+
+.math-whiteboard-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.math-whiteboard-tools {
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.math-whiteboard-tool {
+    display: grid;
+    width: 34px;
+    height: 32px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition:
+        background var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.math-whiteboard-tool:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+}
+
+.math-whiteboard-tool--active {
+    background: var(--color-primary-600);
+    color: #fff;
+}
+
+.math-whiteboard-tool--active:hover {
+    background: var(--color-primary-600);
+    color: #fff;
+}
+
+.math-whiteboard-tool:focus-visible {
+    outline: 3px solid rgb(139 92 246 / 20%);
+    outline-offset: 2px;
+}
+
+.math-whiteboard-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+
+/* Tablet */
+
+@media (max-width: 900px) {
+    .math-whiteboard-canvas {
+        height: 360px;
+        min-height: 360px;
+    }
+}
+
+/* Phone */
+
+@media (max-width: 600px) {
+    .math-whiteboard {
+        border-radius: var(--radius-lg);
+    }
+
+    .math-whiteboard-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .math-whiteboard-header p {
+        max-width: 190px;
+    }
+
+    .math-whiteboard-toolbar {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .math-whiteboard-canvas {
+        height: 280px;
+        min-height: 280px;
+        background-size: 20px 20px;
+    }
+}
