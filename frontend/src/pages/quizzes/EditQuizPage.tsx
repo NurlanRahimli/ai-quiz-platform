@@ -42,6 +42,14 @@ type NewQuestionChoice = {
   is_correct: boolean
 }
 
+type NewQuestionDraft = {
+  isAddingQuestion: boolean
+  questionType: NewQuestionType
+  questionText: string
+  expectedAnswer: string
+  choices: NewQuestionChoice[]
+}
+
 type Question = {
   id: string
   quiz_id: string
@@ -162,6 +170,30 @@ function EditQuizPage() {
           title: response.data.title,
           description: response.data.description ?? "",
         })
+        const draftKey = `edit-quiz-draft:${response.data.id}`
+        const savedDraft = localStorage.getItem(draftKey)
+
+        if (savedDraft) {
+          try {
+            const draft = JSON.parse(savedDraft) as NewQuestionDraft
+
+            setIsAddingQuestion(draft.isAddingQuestion ?? false)
+            setNewQuestionType(
+              draft.questionType ?? "multiple_choice",
+            )
+            setNewQuestionText(draft.questionText ?? "")
+            setNewExpectedAnswer(draft.expectedAnswer ?? "")
+
+            if (
+              Array.isArray(draft.choices) &&
+              draft.choices.length >= 2
+            ) {
+              setNewQuestionChoices(draft.choices)
+            }
+          } catch {
+            localStorage.removeItem(draftKey)
+          }
+        }
       } catch (requestError) {
         if (
           axios.isAxiosError(requestError) &&
@@ -178,6 +210,39 @@ function EditQuizPage() {
 
     void loadQuiz()
   }, [quizId])
+
+
+  useEffect(() => {
+    if (!quizId || isLoading) {
+      return
+    }
+
+    const draftKey = `edit-quiz-draft:${quizId}`
+
+    if (!isAddingQuestion) {
+      localStorage.removeItem(draftKey)
+      return
+    }
+
+    const draft: NewQuestionDraft = {
+      isAddingQuestion,
+      questionType: newQuestionType,
+      questionText: newQuestionText,
+      expectedAnswer: newExpectedAnswer,
+      choices: newQuestionChoices,
+    }
+
+    localStorage.setItem(draftKey, JSON.stringify(draft))
+  }, [
+    quizId,
+    isLoading,
+    isAddingQuestion,
+    newQuestionType,
+    newQuestionText,
+    newExpectedAnswer,
+    newQuestionChoices,
+  ])
+
 
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>,
@@ -360,6 +425,10 @@ function EditQuizPage() {
 
 
   const resetNewQuestion = () => {
+    if (quizId) {
+      localStorage.removeItem(`edit-quiz-draft:${quizId}`)
+    }
+
     setIsAddingQuestion(false)
     setNewQuestionType("multiple_choice")
     setNewQuestionText("")
