@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+
+import axios from "axios";
+import Swal from "sweetalert2";
+
 
 import {
   ArrowRight,
@@ -8,6 +11,7 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 
 import apiClient from "../../api/client";
@@ -41,6 +45,7 @@ function DashboardPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
   const [currentTime] = useState(() => Date.now());
 
   useEffect(() => {
@@ -67,6 +72,62 @@ function DashboardPage() {
 
     void loadQuizzes();
   }, []);
+
+
+  const deleteQuiz = async (quiz: Quiz) => {
+    const result = await Swal.fire({
+      title: "Delete quiz?",
+      text: `Are you sure you want to delete "${quiz.title}"? This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Delete Quiz",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setDeletingQuizId(quiz.id);
+    setError("");
+
+    try {
+      await apiClient.delete(`/quizzes/${quiz.id}`);
+
+      setQuizzes((current) =>
+        current.filter((existingQuiz) => existingQuiz.id !== quiz.id),
+      );
+
+      await Swal.fire({
+        title: "Quiz deleted",
+        text: `"${quiz.title}" has been deleted.`,
+        icon: "success",
+        confirmButtonText: "Done",
+      });
+    } catch (requestError) {
+      let message = "Unable to delete quiz.";
+
+      if (axios.isAxiosError(requestError)) {
+        const detail = requestError.response?.data?.detail;
+
+        if (typeof detail === "string") {
+          message = detail;
+        }
+      }
+
+      await Swal.fire({
+        title: "Could not delete quiz",
+        text: message,
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+    } finally {
+      setDeletingQuizId(null);
+    }
+  };
+
 
   const recentlyUpdatedQuizzes = useMemo(
     () =>
@@ -267,10 +328,33 @@ function DashboardPage() {
                 <div className="dashboard-quiz-card__footer">
                   <span>Updated {formatDate(quiz.updated_at)}</span>
 
-                  <span className="dashboard-quiz-card__action">
-                    Edit
-                    <ArrowRight size={15} strokeWidth={2} aria-hidden="true" />
-                  </span>
+                  <div className="dashboard-quiz-card__actions">
+                    <button
+                      type="button"
+                      className="dashboard-quiz-card__delete"
+                      disabled={deletingQuizId === quiz.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void deleteQuiz(quiz);
+                      }}
+                      onKeyDown={(event) => {
+                        event.stopPropagation();
+                      }}
+                      aria-label={`Delete ${quiz.title}`}
+                    >
+                      <Trash2 size={15} strokeWidth={2} aria-hidden="true" />
+                      {deletingQuizId === quiz.id ? "Deleting..." : "Delete"}
+                    </button>
+
+                    <span className="dashboard-quiz-card__action">
+                      Edit
+                      <ArrowRight
+                        size={15}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </div>
                 </div>
               </Card>
             ))}
