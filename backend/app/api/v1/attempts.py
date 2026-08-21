@@ -85,15 +85,12 @@ def submit_quiz_attempt(
         question = questions[submitted_answer.question_id]
 
         if question.question_type == "multiple_choice":
-            if (
-                submitted_answer.selected_choice_id is None
-                or submitted_answer.text_answer is not None
-            ):
+            if submitted_answer.text_answer is not None:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=(
-                        "Multiple-choice questions require exactly "
-                        "one selected choice"
+                        "Multiple-choice questions cannot include "
+                        "a text answer"
                     ),
                 )
 
@@ -102,7 +99,10 @@ def submit_quiz_attempt(
                 for choice in question.answer_choices
             }
 
-            if submitted_answer.selected_choice_id not in valid_choice_ids:
+            if (
+                submitted_answer.selected_choice_id is not None
+                and submitted_answer.selected_choice_id not in valid_choice_ids
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=(
@@ -115,25 +115,32 @@ def submit_quiz_attempt(
             "written_answer",
             "math_work",
         }:
-            text_answer = (
-                submitted_answer.text_answer.strip()
-                if submitted_answer.text_answer
-                else ""
-            )
+            if submitted_answer.selected_choice_id is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "Written and math questions cannot include "
+                        "a selected choice"
+                    ),
+                )
 
             if (
-                not text_answer
-                or submitted_answer.selected_choice_id is not None
+                submitted_answer.text_answer is not None
+                and not submitted_answer.text_answer.strip()
             ):
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=(
-                        "Written and math questions require "
-                        "a text answer"
+                        "Written and math questions cannot contain "
+                        "an empty text answer"
                     ),
                 )
 
-            submitted_answer.text_answer = text_answer
+            submitted_answer.text_answer = (
+                submitted_answer.text_answer.strip()
+                if submitted_answer.text_answer is not None
+                else None
+            )
 
         else:
             raise HTTPException(

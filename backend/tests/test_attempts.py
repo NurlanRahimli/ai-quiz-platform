@@ -635,3 +635,40 @@ def test_authenticated_user_can_submit_attempt_for_another_users_quiz(client):
     assert response.status_code == 201
     assert response.json()["quiz_id"] == quiz["quiz_id"]
     assert len(response.json()["answers"]) == 3
+
+
+def test_can_submit_quiz_with_unanswered_questions(client):
+    headers = register_and_login(
+        client,
+        email="unanswered-attempt@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": None,
+                    "text_answer": None,
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "selected_choice_id": None,
+                    "text_answer": None,
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "selected_choice_id": None,
+                    "text_answer": None,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+    assert len(data["answers"]) == 3
