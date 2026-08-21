@@ -78,10 +78,7 @@ def take_quiz(
             selectinload(Quiz.questions)
             .selectinload(Question.answer_choices)
         )
-        .where(
-            Quiz.id == quiz_id,
-            Quiz.owner_id == current_user.id,
-        )
+        .where(Quiz.id == quiz_id)
     )
 
     if quiz is None:

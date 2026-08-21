@@ -414,3 +414,53 @@ def test_take_quiz_does_not_expose_correct_answers(client):
 
     for choice in question["answer_choices"]:
         assert "is_correct" not in choice
+
+
+def test_authenticated_user_can_take_another_users_quiz(client):
+    owner_headers = register_and_login(
+        client,
+        email="take-owner@example.com",
+    )
+
+    quiz_response = client.post(
+        "/api/v1/quizzes",
+        headers=owner_headers,
+        json={
+            "title": "Shared Quiz",
+            "description": "A quiz another user can take",
+        },
+    )
+    assert quiz_response.status_code == 201
+    quiz_id = quiz_response.json()["id"]
+
+    question_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions",
+        headers=owner_headers,
+        json={
+            "text": "What is 2 + 2?",
+            "choices": [
+                {
+                    "text": "3",
+                    "is_correct": False,
+                },
+                {
+                    "text": "4",
+                    "is_correct": True,
+                },
+            ],
+        },
+    )
+    assert question_response.status_code == 201
+
+    taker_headers = register_and_login(
+        client,
+        email="take-other@example.com",
+    )
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz_id}/take",
+        headers=taker_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == quiz_id
