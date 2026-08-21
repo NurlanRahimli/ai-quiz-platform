@@ -4,6 +4,19 @@ import axios from "axios"
 import { useNavigate, useParams } from "react-router-dom"
 
 import MathWhiteboard from "../../components/quizzes/MathWhiteboard"
+import Button from "../../components/ui/Button"
+
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  FileText,
+  History,
+  ListChecks,
+  PenLine,
+  Calculator,
+} from "lucide-react"
 
 import apiClient from "../../api/client"
 import "../../styles/pages/quizzes/TakeQuizPage.css"
@@ -31,15 +44,25 @@ type Quiz = {
 
 type Answers = Record<string, string>
 
+type WhiteboardDrawings = Record<string, string>
+
+type QuizDraft = {
+  answers: Answers
+  whiteboardDrawings: WhiteboardDrawings
+  currentQuestionIndex: number
+}
+
 function TakeQuizPage() {
   const { quizId } = useParams()
   const navigate = useNavigate()
 
   const [quiz, setQuiz] = useState<Quiz | null>(null)
   const [answers, setAnswers] = useState<Answers>({})
+  const [whiteboardDrawings, setWhiteboardDrawings] = useState<WhiteboardDrawings>({})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
 
   useEffect(() => {
     const loadQuiz = async () => {
@@ -55,6 +78,32 @@ function TakeQuizPage() {
         )
 
         setQuiz(response.data)
+
+        const draftKey = `quiz-draft:${response.data.id}`
+        const savedDraft = localStorage.getItem(draftKey)
+
+        if (savedDraft) {
+          try {
+            const draft = JSON.parse(savedDraft) as QuizDraft
+
+            setAnswers(draft.answers ?? {})
+            setWhiteboardDrawings(draft.whiteboardDrawings ?? {})
+
+            const lastQuestionIndex = Math.max(
+              response.data.questions.length - 1,
+              0,
+            )
+
+            setCurrentQuestionIndex(
+              Math.min(
+                Math.max(draft.currentQuestionIndex ?? 0, 0),
+                lastQuestionIndex,
+              ),
+            )
+          } catch {
+            localStorage.removeItem(draftKey)
+          }
+        }
       } catch (requestError) {
         if (
           axios.isAxiosError(requestError) &&
@@ -72,11 +121,68 @@ function TakeQuizPage() {
     void loadQuiz()
   }, [quizId])
 
+  useEffect(() => {
+    if (!quiz) {
+      return
+    }
+
+    const draft: QuizDraft = {
+      answers,
+      whiteboardDrawings,
+      currentQuestionIndex,
+    }
+
+    localStorage.setItem(
+      `quiz-draft:${quiz.id}`,
+      JSON.stringify(draft),
+    )
+  }, [
+    quiz,
+    answers,
+    whiteboardDrawings,
+    currentQuestionIndex,
+  ])
+
   const updateAnswer = (questionId: string, value: string) => {
     setAnswers((current) => ({
       ...current,
       [questionId]: value,
     }))
+  }
+
+  const questionCount = quiz?.questions.length ?? 0
+  const currentQuestion = quiz?.questions[currentQuestionIndex] ?? null
+
+  const answeredCount = quiz
+    ? quiz.questions.filter(
+      (question) => answers[question.id]?.trim(),
+    ).length
+    : 0
+
+  const progressPercentage =
+    questionCount > 0
+      ? Math.round((answeredCount / questionCount) * 100)
+      : 0
+
+  const isFirstQuestion = currentQuestionIndex === 0
+  const isLastQuestion =
+    questionCount > 0 &&
+    currentQuestionIndex === questionCount - 1
+
+  const goToPreviousQuestion = () => {
+    setCurrentQuestionIndex((current) =>
+      Math.max(current - 1, 0),
+    )
+  }
+
+  const goToNextQuestion = () => {
+    setCurrentQuestionIndex((current) =>
+      Math.min(current + 1, questionCount - 1),
+    )
+  }
+
+  const goToQuestion = (index: number) => {
+    setCurrentQuestionIndex(index)
   }
 
 
@@ -123,6 +229,8 @@ function TakeQuizPage() {
         },
       )
 
+      localStorage.removeItem(`quiz-draft:${quizId}`)
+
       navigate(
         `/quizzes/${quizId}/attempts/${response.data.id}/results`,
         { replace: true },
@@ -156,131 +264,391 @@ function TakeQuizPage() {
 
   return (
     <main className="take-quiz-page">
-      <div className="take-quiz-navigation">
-        <button
-          className="take-quiz-back-button"
-          type="button"
-          onClick={() => navigate("/dashboard")}
-        >
-          ← Back to dashboard
-        </button>
+      <div className="take-quiz-header">
+        <div className="take-quiz-header-main">
+          <button
+            className="take-quiz-back-button"
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft size={20} />
+          </button>
 
-        <button
-          className="take-quiz-history-button"
+          <div className="take-quiz-title-group">
+            <h1>{quiz.title}</h1>
+
+            <div className="take-quiz-meta">
+              <span>
+                {questionCount}{" "}
+                {questionCount === 1 ? "question" : "questions"}
+              </span>
+
+              {quiz.description && (
+                <>
+                  <span className="take-quiz-meta-dot" />
+                  <span>{quiz.description}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => navigate(`/quizzes/${quizId}/history`)}
         >
-          View attempt history
-        </button>
+          <History size={16} />
+          Attempt history
+        </Button>
       </div>
 
-      <header>
-        <p>Quiz</p>
-        <h1>{quiz.title}</h1>
-
-        {quiz.description && <p>{quiz.description}</p>}
-
-        <p>
-          {quiz.questions.length}{" "}
-          {quiz.questions.length === 1 ? "question" : "questions"}
-        </p>
-      </header>
-
-      {error && (
-        <p role="alert">
-          {error}
-        </p>
-      )}
-
-      {quiz.questions.length === 0 ? (
-        <p>This quiz doesn't have any questions yet.</p>
+      {questionCount === 0 ? (
+        <div className="take-quiz-empty">
+          <FileText size={28} />
+          <h2>No questions yet</h2>
+          <p>This quiz doesn't have any questions yet.</p>
+        </div>
       ) : (
-        <form onSubmit={handleSubmit}>
-          {quiz.questions.map((question, index) => (
-            <section
-              className="take-question"
-              key={question.id}
-            >
-              <h2>
-                {index + 1}. {question.text}
-              </h2>
+        <>
+          <div className="take-quiz-mobile-progress">
+            <div className="take-quiz-progress-heading">
+              <span>
+                Question {currentQuestionIndex + 1} of {questionCount}
+              </span>
+              <span>{progressPercentage}% answered</span>
+            </div>
 
-              {question.question_type === "multiple_choice" && (
-                <div>
-                  {question.answer_choices.map((choice) => (
-                    <label key={choice.id}>
-                      <input
-                        type="radio"
-                        name={question.id}
-                        value={choice.id}
-                        checked={
-                          answers[question.id] === choice.id
-                        }
-                        onChange={(event) =>
-                          updateAnswer(
-                            question.id,
-                            event.target.value,
-                          )
-                        }
+            <div className="take-quiz-progress-track">
+              <div
+                className="take-quiz-progress-value"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="take-quiz-layout">
+            <form
+              className="take-quiz-workspace"
+              onSubmit={handleSubmit}
+            >
+              {error && (
+                <div className="take-quiz-error" role="alert">
+                  {error}
+                </div>
+              )}
+
+              {currentQuestion && (
+                <section className="take-question-card">
+                  <div className="take-question-header">
+                    <div className="take-question-labels">
+                      <span className="take-question-number">
+                        {currentQuestionIndex + 1}
+                      </span>
+
+                      <span className="take-question-type">
+                        {currentQuestion.question_type ===
+                          "multiple_choice" ? (
+                          <>
+                            <ListChecks size={15} />
+                            Multiple choice
+                          </>
+                        ) : currentQuestion.question_type ===
+                          "written_answer" ? (
+                          <>
+                            <PenLine size={15} />
+                            Written answer
+                          </>
+                        ) : (
+                          <>
+                            <Calculator size={15} />
+                            Math work
+                          </>
+                        )}
+                      </span>
+                    </div>
+
+                    {answers[currentQuestion.id]?.trim() && (
+                      <span className="take-question-answered">
+                        <CheckCircle2 size={16} />
+                        Answered
+                      </span>
+                    )}
+                  </div>
+
+                  <h2 className="take-question-text">
+                    {currentQuestion.text}
+                  </h2>
+
+                  {currentQuestion.question_type ===
+                    "multiple_choice" && (
+                      <div className="take-answer-options">
+                        {currentQuestion.answer_choices.map(
+                          (choice, index) => {
+                            const selected =
+                              answers[currentQuestion.id] === choice.id
+
+                            return (
+                              <label
+                                className={`take-answer-option ${selected
+                                    ? "take-answer-option--selected"
+                                    : ""
+                                  }`}
+                                key={choice.id}
+                              >
+                                <input
+                                  type="radio"
+                                  name={currentQuestion.id}
+                                  value={choice.id}
+                                  checked={selected}
+                                  onChange={(event) =>
+                                    updateAnswer(
+                                      currentQuestion.id,
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+
+                                <span className="take-answer-letter">
+                                  {String.fromCharCode(65 + index)}
+                                </span>
+
+                                <span className="take-answer-text">
+                                  {choice.text}
+                                </span>
+
+                                <span className="take-answer-check">
+                                  {selected && <Check size={16} />}
+                                </span>
+                              </label>
+                            )
+                          },
+                        )}
+                      </div>
+                    )}
+
+                  {currentQuestion.question_type ===
+                    "written_answer" && (
+                      <div className="take-written-answer">
+                        <label
+                          htmlFor={`written-answer-${currentQuestion.id}`}
+                        >
+                          Your answer
+                        </label>
+
+                        <textarea
+                          id={`written-answer-${currentQuestion.id}`}
+                          placeholder="Type your answer here..."
+                          value={answers[currentQuestion.id] ?? ""}
+                          onChange={(event) =>
+                            updateAnswer(
+                              currentQuestion.id,
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </div>
+                    )}
+
+                  {currentQuestion.question_type === "math_work" && (
+                    <div className="math-work-answer">
+                      <p className="math-work-instruction">
+                        Use the whiteboard for your scratch work, then
+                        enter your final answer below.
+                      </p>
+
+                      <MathWhiteboard
+                        key={currentQuestion.id}
+                        value={whiteboardDrawings[currentQuestion.id] ?? ""}
+                        onChange={(drawing) => {
+                          setWhiteboardDrawings((current) => ({
+                            ...current,
+                            [currentQuestion.id]: drawing,
+                          }))
+                        }}
                       />
 
-                      {choice.text}
-                    </label>
-                  ))}
-                </div>
-              )}
+                      <div className="math-final-answer">
+                        <label
+                          htmlFor={`math-answer-${currentQuestion.id}`}
+                        >
+                          Final answer
+                        </label>
 
-              {question.question_type === "written_answer" && (
-                <textarea
-                  placeholder="Type your answer..."
-                  value={answers[question.id] ?? ""}
-                  onChange={(event) =>
-                    updateAnswer(
-                      question.id,
-                      event.target.value,
-                    )
-                  }
-                />
-              )}
+                        <input
+                          id={`math-answer-${currentQuestion.id}`}
+                          type="text"
+                          placeholder="Enter your final answer..."
+                          value={answers[currentQuestion.id] ?? ""}
+                          onChange={(event) =>
+                            updateAnswer(
+                              currentQuestion.id,
+                              event.target.value,
+                            )
+                          }
+                        />
 
-              {question.question_type === "math_work" && (
-                <div className="math-work-answer">
-                  <MathWhiteboard />
+                        <p>
+                          Your final answer will be used for grading.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="math-final-answer">
-                    <label htmlFor={`math-answer-${question.id}`}>
-                      Final answer
-                    </label>
+                  <div className="take-question-navigation">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isFirstQuestion}
+                      onClick={goToPreviousQuestion}
+                    >
+                      <ArrowLeft size={17} />
+                      Previous
+                    </Button>
 
-                    <input
-                      id={`math-answer-${question.id}`}
-                      type="text"
-                      placeholder="Enter your final answer..."
-                      value={answers[question.id] ?? ""}
-                      onChange={(event) =>
-                        updateAnswer(
-                          question.id,
-                          event.target.value,
-                        )
-                      }
-                    />
-
-                    <p>
-                      Your final answer will be used for grading.
-                    </p>
+                    {!isLastQuestion ? (
+                      <Button
+                        type="button"
+                        onClick={goToNextQuestion}
+                      >
+                        Next
+                        <ArrowRight size={17} />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        loading={isSubmitting}
+                      >
+                        <CheckCircle2 size={17} />
+                        Submit quiz
+                      </Button>
+                    )}
                   </div>
-                </div>
+                </section>
               )}
-            </section>
-          ))}
+            </form>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Submitting..." : "Submit quiz"}
-          </button>
-        </form>
+            <aside className="take-quiz-sidebar">
+              <div className="take-quiz-sidebar-card">
+                <div className="take-quiz-sidebar-heading">
+                  <span>Progress</span>
+                  <strong>{progressPercentage}%</strong>
+                </div>
+
+                <p className="take-quiz-sidebar-description">
+                  {answeredCount} of {questionCount} questions answered
+                </p>
+
+                <div className="take-quiz-progress-track">
+                  <div
+                    className="take-quiz-progress-value"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="take-quiz-sidebar-card">
+                <h3>Questions</h3>
+
+                <div className="take-quiz-question-grid">
+                  {quiz.questions.map((question, index) => {
+                    const answered =
+                      Boolean(answers[question.id]?.trim())
+                    const current =
+                      index === currentQuestionIndex
+
+                    return (
+                      <button
+                        key={question.id}
+                        type="button"
+                        className={[
+                          "take-quiz-question-button",
+                          answered
+                            ? "take-quiz-question-button--answered"
+                            : "",
+                          current
+                            ? "take-quiz-question-button--current"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() => goToQuestion(index)}
+                        aria-label={`Go to question ${index + 1}`}
+                        aria-current={current ? "step" : undefined}
+                      >
+                        {answered && !current ? (
+                          <Check size={16} />
+                        ) : (
+                          index + 1
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="take-quiz-question-legend">
+                  <span>
+                    <i className="take-quiz-legend-dot take-quiz-legend-dot--answered" />
+                    Answered
+                  </span>
+
+                  <span>
+                    <i className="take-quiz-legend-dot take-quiz-legend-dot--current" />
+                    Current
+                  </span>
+
+                  <span>
+                    <i className="take-quiz-legend-dot" />
+                    Not answered
+                  </span>
+                </div>
+              </div>
+
+              <div className="take-quiz-sidebar-card">
+                <h3>Quiz overview</h3>
+
+                <dl className="take-quiz-overview">
+                  <div>
+                    <dt>Total questions</dt>
+                    <dd>{questionCount}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Answered</dt>
+                    <dd>{answeredCount}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Remaining</dt>
+                    <dd>{questionCount - answeredCount}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <Button
+                type="button"
+                fullWidth
+                onClick={() => {
+                  if (isLastQuestion) {
+                    document
+                      .querySelector<HTMLFormElement>(
+                        ".take-quiz-workspace",
+                      )
+                      ?.requestSubmit()
+                    return
+                  }
+
+                  goToQuestion(questionCount - 1)
+                }}
+              >
+                <CheckCircle2 size={17} />
+                Review & Submit
+              </Button>
+            </aside>
+          </div>
+        </>
       )}
     </main>
   )

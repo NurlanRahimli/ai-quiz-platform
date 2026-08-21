@@ -2,9 +2,23 @@ import { useEffect, useRef, useState } from "react"
 
 import "../../styles/components/quizzes/MathWhiteboard.css"
 
-function MathWhiteboard() {
+import { Eraser, PenLine, Trash2 } from "lucide-react"
+
+
+type MathWhiteboardProps = {
+  value: string
+  onChange: (value: string) => void
+}
+
+
+function MathWhiteboard({
+  value,
+  onChange,
+}: MathWhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const hasRestoredRef = useRef(false)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [activeTool, setActiveTool] = useState<"pen" | "eraser">("pen")
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -23,7 +37,27 @@ function MathWhiteboard() {
     context.lineJoin = "round"
     context.lineWidth = 2
     context.strokeStyle = "#1f2937"
-  }, [])
+
+    if (hasRestoredRef.current) {
+      return
+    }
+
+    hasRestoredRef.current = true
+
+    if (!value) {
+      return
+    }
+
+    const image = new Image()
+
+    image.onload = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.globalCompositeOperation = "source-over"
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    }
+
+    image.src = value
+  }, [value])
 
   const getPointerPosition = (
     event: React.PointerEvent<HTMLCanvasElement>,
@@ -44,6 +78,15 @@ function MathWhiteboard() {
 
     if (!context) {
       return
+    }
+
+    if (activeTool === "eraser") {
+      context.globalCompositeOperation = "destination-out"
+      context.lineWidth = 24
+    } else {
+      context.globalCompositeOperation = "source-over"
+      context.strokeStyle = "#1f2937"
+      context.lineWidth = 2
     }
 
     const { x, y } = getPointerPosition(event)
@@ -82,15 +125,17 @@ function MathWhiteboard() {
       return
     }
 
-    const context = event.currentTarget.getContext("2d")
+    const canvas = event.currentTarget
+    const context = canvas.getContext("2d")
 
     context?.closePath()
 
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
+    if (canvas.hasPointerCapture(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId)
     }
 
     setIsDrawing(false)
+    onChange(canvas.toDataURL("image/png"))
   }
 
   const clearWhiteboard = () => {
@@ -106,7 +151,9 @@ function MathWhiteboard() {
       return
     }
 
+    context.globalCompositeOperation = "source-over"
     context.clearRect(0, 0, canvas.width, canvas.height)
+    onChange("")
   }
 
   return (
@@ -117,13 +164,50 @@ function MathWhiteboard() {
           <p>Draw your calculations here.</p>
         </div>
 
-        <button
-          type="button"
-          className="math-whiteboard-clear"
-          onClick={clearWhiteboard}
-        >
-          Clear
-        </button>
+        <div className="math-whiteboard-toolbar">
+          <div
+            className="math-whiteboard-tools"
+            role="group"
+            aria-label="Drawing tools"
+          >
+            <button
+              type="button"
+              className={`math-whiteboard-tool ${activeTool === "pen"
+                  ? "math-whiteboard-tool--active"
+                  : ""
+                }`}
+              onClick={() => setActiveTool("pen")}
+              aria-label="Pen"
+              aria-pressed={activeTool === "pen"}
+              title="Pen"
+            >
+              <PenLine size={16} />
+            </button>
+
+            <button
+              type="button"
+              className={`math-whiteboard-tool ${activeTool === "eraser"
+                  ? "math-whiteboard-tool--active"
+                  : ""
+                }`}
+              onClick={() => setActiveTool("eraser")}
+              aria-label="Eraser"
+              aria-pressed={activeTool === "eraser"}
+              title="Eraser"
+            >
+              <Eraser size={16} />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="math-whiteboard-clear"
+            onClick={clearWhiteboard}
+          >
+            <Trash2 size={15} />
+            Clear
+          </button>
+        </div>
       </div>
 
       <canvas
