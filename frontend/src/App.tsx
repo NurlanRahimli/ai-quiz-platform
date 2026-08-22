@@ -13,6 +13,8 @@ import QuizResultsPage from "./pages/quizzes/QuizResultsPage";
 import QuizAttemptHistoryPage from "./pages/quizzes/QuizAttemptHistoryPage";
 import QuizDetailsPage from "./pages/quizzes/QuizDetailsPage";
 import ProfilePage from "./pages/profile/ProfilePage";
+import DiscoverQuizzesPage from "./pages/quizzes/DiscoverQuizzesPage";
+import SearchQuizzesPage from "./pages/quizzes/SearchQuizzesPage";
 
 function ProtectedAppLayout() {
   return (
@@ -31,6 +33,11 @@ function ProtectedAppLayout() {
         <Route
           path="/quizzes/:quizId/history"
           element={<QuizAttemptHistoryPage />}
+        />
+        <Route path="/discover" element={<DiscoverQuizzesPage />} />
+        <Route
+          path="/discover/search"
+          element={<SearchQuizzesPage />}
         />
       </Routes>
     </AppShell>

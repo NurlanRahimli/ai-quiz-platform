@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   LogOut,
   Plus,
+  Compass
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -64,6 +65,24 @@ export default function Sidebar({
               aria-hidden="true"
             />
             Dashboard
+          </NavLink>
+
+          <NavLink
+            to="/discover"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `app-sidebar__link ${
+                isActive ? "app-sidebar__link--active" : ""
+              }`
+            }
+          >
+            <Compass
+              className="app-sidebar__link-icon"
+              size={19}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
+            Discover Quizzes
           </NavLink>
 
           <NavLink

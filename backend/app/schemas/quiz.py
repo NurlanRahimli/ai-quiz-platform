@@ -128,6 +128,24 @@ class QuizResponse(BaseModel):
 class QuizListResponse(QuizResponse):
     creator_name: str
 
+class QuizDiscoveryResponse(QuizResponse):
+    creator_name: str
+    question_count: int
+    attempt_count: int
+
+
+class QuizDiscoveryPageResponse(BaseModel):
+    quizzes: list[QuizDiscoveryResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class QuizDiscoveryOverviewResponse(BaseModel):
+    featured: list[QuizDiscoveryResponse]
+    categories: list[str]
+
 
 class QuizDetailResponse(QuizResponse):
     questions: list[QuestionResponse]
