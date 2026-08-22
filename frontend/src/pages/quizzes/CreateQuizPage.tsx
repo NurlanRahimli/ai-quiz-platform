@@ -13,6 +13,8 @@ import {
   Sparkles,
   Trash2,
   X,
+  Globe2,
+  Link2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -23,10 +25,15 @@ import Input from "../../components/ui/Input";
 
 import "../../styles/pages/quizzes/CreateQuizPage.css";
 
+
+type QuizVisibility = "public" | "unlisted";
+
 type QuizForm = {
   title: string;
   description: string;
+  visibility: QuizVisibility;
 };
+
 
 type QuizErrors = Partial<Record<keyof QuizForm | "form", string>>;
 
@@ -107,6 +114,7 @@ function CreateQuizPage() {
     initialDraft?.form ?? {
       title: "",
       description: "",
+      visibility: "unlisted",
     },
   );
 
@@ -373,6 +381,7 @@ function CreateQuizPage() {
       const response = await apiClient.post<QuizResponse>("/quizzes", {
         title: form.title.trim(),
         description: form.description.trim() || null,
+        visibility: form.visibility,
       });
 
       const quizId = response.data.id;
@@ -533,6 +542,84 @@ function CreateQuizPage() {
                     updateField("description", event.target.value)
                   }
                 />
+
+                <div className="create-quiz-form__field">
+                  <div className="create-quiz-form__label-row">
+                    <label>Visibility</label>
+                  </div>
+
+                  <div
+                    className="quiz-visibility-options"
+                    role="radiogroup"
+                    aria-label="Quiz visibility"
+                  >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={form.visibility === "unlisted"}
+                      className={`quiz-visibility-option ${
+                        form.visibility === "unlisted"
+                          ? "quiz-visibility-option--selected"
+                          : ""
+                      }`}
+                      disabled={isSubmitting}
+                      onClick={() => updateField("visibility", "unlisted")}
+                    >
+                      <span className="quiz-visibility-option__icon">
+                        <Link2 size={20} strokeWidth={2} aria-hidden="true" />
+                      </span>
+
+                      <span className="quiz-visibility-option__content">
+                        <span className="quiz-visibility-option__title">
+                          Unlisted
+                        </span>
+                        <span className="quiz-visibility-option__description">
+                          Anyone with the link can access this quiz.
+                        </span>
+                      </span>
+
+                      <span
+                        className="quiz-visibility-option__check"
+                        aria-hidden="true"
+                      >
+                        <Check size={15} strokeWidth={2.5} />
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={form.visibility === "public"}
+                      className={`quiz-visibility-option ${
+                        form.visibility === "public"
+                          ? "quiz-visibility-option--selected"
+                          : ""
+                      }`}
+                      disabled={isSubmitting}
+                      onClick={() => updateField("visibility", "public")}
+                    >
+                      <span className="quiz-visibility-option__icon">
+                        <Globe2 size={20} strokeWidth={2} aria-hidden="true" />
+                      </span>
+
+                      <span className="quiz-visibility-option__content">
+                        <span className="quiz-visibility-option__title">
+                          Public
+                        </span>
+                        <span className="quiz-visibility-option__description">
+                          Anyone can access and discover this quiz.
+                        </span>
+                      </span>
+
+                      <span
+                        className="quiz-visibility-option__check"
+                        aria-hidden="true"
+                      >
+                        <Check size={15} strokeWidth={2.5} />
+                      </span>
+                    </button>
+                  </div>
+                </div>
 
                 <div className="create-quiz-form__field-footer">
                   <div>

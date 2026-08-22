@@ -15,6 +15,8 @@ import {
   PenLine,
   Calculator,
   Trash2,
+  Globe2,
+  Link2,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -59,11 +61,14 @@ type Question = {
   answer_choices: AnswerChoice[]
 }
 
+type QuizVisibility = "public" | "unlisted";
+
 type Quiz = {
   id: string
   owner_id: string
   title: string
   description: string | null
+  visibility: QuizVisibility
   created_at: string
   updated_at: string
   questions: Question[]
@@ -72,6 +77,7 @@ type Quiz = {
 type QuizForm = {
   title: string
   description: string
+  visibility: QuizVisibility
 }
 
 const QUESTIONS_PER_BATCH = 10
@@ -84,6 +90,7 @@ function EditQuizPage() {
   const [form, setForm] = useState<QuizForm>({
     title: "",
     description: "",
+    visibility: "unlisted",
   })
 
   const [isLoading, setIsLoading] = useState(true)
@@ -169,6 +176,7 @@ function EditQuizPage() {
         setForm({
           title: response.data.title,
           description: response.data.description ?? "",
+          visibility: response.data.visibility,
         })
         const draftKey = `edit-quiz-draft:${response.data.id}`
         const savedDraft = localStorage.getItem(draftKey)
@@ -280,6 +288,7 @@ function EditQuizPage() {
         {
           title,
           description: form.description.trim() || null,
+          visibility: form.visibility,
         },
       )
 
@@ -289,6 +298,7 @@ function EditQuizPage() {
             ...current,
             title: response.data.title,
             description: response.data.description,
+            visibility: response.data.visibility,
             updated_at: response.data.updated_at,
           }
           : current,
@@ -297,6 +307,7 @@ function EditQuizPage() {
       setForm({
         title: response.data.title,
         description: response.data.description ?? "",
+        visibility: response.data.visibility,
       })
 
       setSuccessMessage("Quiz details saved.")
@@ -900,6 +911,100 @@ function EditQuizPage() {
 
               <div className="edit-quiz-details__character-count">
                 {form.description.length}/1000
+              </div>
+            </div>
+
+            <div className="edit-quiz-details__field">
+              <div className="edit-quiz-details__label-row">
+                <label>Visibility</label>
+              </div>
+
+              <div
+                className="quiz-visibility-options"
+                role="radiogroup"
+                aria-label="Quiz visibility"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={form.visibility === "unlisted"}
+                  className={`quiz-visibility-option ${
+                    form.visibility === "unlisted"
+                      ? "quiz-visibility-option--selected"
+                      : ""
+                  }`}
+                  disabled={isSaving}
+                  onClick={() => {
+                    setForm((current) => ({
+                      ...current,
+                      visibility: "unlisted",
+                    }))
+                    setError("")
+                    setSuccessMessage("")
+                  }}
+                >
+                  <span className="quiz-visibility-option__icon">
+                    <Link2 size={20} strokeWidth={2} aria-hidden="true" />
+                  </span>
+
+                  <span className="quiz-visibility-option__content">
+                    <span className="quiz-visibility-option__title">
+                      Unlisted
+                    </span>
+
+                    <span className="quiz-visibility-option__description">
+                      Anyone with the link can access this quiz.
+                    </span>
+                  </span>
+
+                  <span
+                    className="quiz-visibility-option__check"
+                    aria-hidden="true"
+                  >
+                    <Check size={15} strokeWidth={2.5} />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={form.visibility === "public"}
+                  className={`quiz-visibility-option ${
+                    form.visibility === "public"
+                      ? "quiz-visibility-option--selected"
+                      : ""
+                  }`}
+                  disabled={isSaving}
+                  onClick={() => {
+                    setForm((current) => ({
+                      ...current,
+                      visibility: "public",
+                    }))
+                    setError("")
+                    setSuccessMessage("")
+                  }}
+                >
+                  <span className="quiz-visibility-option__icon">
+                    <Globe2 size={20} strokeWidth={2} aria-hidden="true" />
+                  </span>
+
+                  <span className="quiz-visibility-option__content">
+                    <span className="quiz-visibility-option__title">
+                      Public
+                    </span>
+
+                    <span className="quiz-visibility-option__description">
+                      Anyone can access and discover this quiz.
+                    </span>
+                  </span>
+
+                  <span
+                    className="quiz-visibility-option__check"
+                    aria-hidden="true"
+                  >
+                    <Check size={15} strokeWidth={2.5} />
+                  </span>
+                </button>
               </div>
             </div>
 

@@ -5,10 +5,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.question import QuestionResponse
 
+from typing import Literal
 
 class QuizCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=1000)
+    visibility: Literal["public", "unlisted"] = "unlisted"
 
     @field_validator("title")
     @classmethod
@@ -24,6 +26,7 @@ class QuizCreate(BaseModel):
 class QuizUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=1000)
+    visibility: Literal["public", "unlisted"] | None = None
 
     @field_validator("title")
     @classmethod
@@ -48,6 +51,7 @@ class QuizResponse(BaseModel):
     description: str | None
     created_at: datetime
     updated_at: datetime
+    visibility: Literal["public", "unlisted"]
 
 
 class QuizDetailResponse(QuizResponse):
@@ -88,6 +92,7 @@ class QuizLandingResponse(BaseModel):
     owner_id: uuid.UUID
     title: str
     description: str | None
+    visibility: Literal["public", "unlisted"]
     creator_name: str
     question_count: int
     created_at: datetime

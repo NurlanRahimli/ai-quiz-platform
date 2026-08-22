@@ -9,6 +9,8 @@ import {
   CircleUserRound,
   Clock3,
   FileQuestion,
+  Globe2,
+  Link2,
   Pencil,
   Play,
   Share2,
@@ -25,6 +27,7 @@ type QuizDetails = {
   owner_id: string;
   title: string;
   description: string | null;
+  visibility: "public" | "unlisted";
   creator_name: string;
   question_count: number;
   created_at: string;
@@ -143,11 +146,25 @@ function QuizDetailsPage() {
 
         <section className="quiz-details-hero">
             <div className="quiz-details-hero__main">
-                <div className="quiz-details-eyebrow">
-                <span className="quiz-details-eyebrow__icon">
-                    <FileQuestion size={16} aria-hidden="true" />
-                </span>
-                Quiz
+                <div className="quiz-details-badges">
+                  <div className="quiz-details-eyebrow">
+                    <span className="quiz-details-eyebrow__icon">
+                      <FileQuestion size={16} aria-hidden="true" />
+                    </span>
+                    Quiz
+                  </div>
+
+                  <span
+                    className={`quiz-details-visibility quiz-details-visibility--${quiz.visibility}`}
+                  >
+                    {quiz.visibility === "public" ? (
+                      <Globe2 size={14} strokeWidth={2} aria-hidden="true" />
+                    ) : (
+                      <Link2 size={14} strokeWidth={2} aria-hidden="true" />
+                    )}
+
+                    {quiz.visibility === "public" ? "Public" : "Unlisted"}
+                  </span>
                 </div>
 
                 <h1>{quiz.title}</h1>

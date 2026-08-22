@@ -38,6 +38,7 @@ def create_quiz(
         owner_id=current_user.id,
         title=quiz_data.title,
         description=quiz_data.description,
+        visibility=quiz_data.visibility,
     )
 
     db.add(quiz)
@@ -129,6 +130,7 @@ def get_quiz(
         owner_id=quiz.owner_id,
         title=quiz.title,
         description=quiz.description,
+        visibility=quiz.visibility,
         creator_name=creator.display_name,
         question_count=question_count or 0,
         created_at=quiz.created_at,
