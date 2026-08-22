@@ -115,6 +115,246 @@ def test_list_quizzes_returns_only_current_users_quizzes(client):
     assert data[0]["creator_name"] == "Quiz User"
 
 
+def test_discover_quizzes_returns_only_public_quizzes(client):
+    owner_headers = register_and_login(
+        client,
+        email="discovery-owner@example.com",
+    )
+
+    public_response = client.post(
+        "/api/v1/quizzes",
+        headers=owner_headers,
+        json={
+            "title": "Public Python Quiz",
+            "description": "Learn Python fundamentals",
+            "visibility": "public",
+            "category": "Programming",
+            "tags": ["Python", "Basics"],
+        },
+    )
+    assert public_response.status_code == 201
+
+    unlisted_response = client.post(
+        "/api/v1/quizzes",
+        headers=owner_headers,
+        json={
+            "title": "Secret Python Quiz",
+            "visibility": "unlisted",
+            "category": "Programming",
+        },
+    )
+    assert unlisted_response.status_code == 201
+
+    viewer_headers = register_and_login(
+        client,
+        email="discovery-viewer@example.com",
+    )
+
+    response = client.get(
+        "/api/v1/quizzes/discover",
+        headers=viewer_headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["total"] == 1
+    assert data["page"] == 1
+    assert data["page_size"] == 5
+    assert data["total_pages"] == 1
+    assert len(data["quizzes"]) == 1
+
+    quiz = data["quizzes"][0]
+
+    assert quiz["title"] == "Public Python Quiz"
+    assert quiz["visibility"] == "public"
+    assert quiz["category"] == "Programming"
+    assert quiz["tags"] == ["Python", "Basics"]
+    assert quiz["creator_name"] == "Quiz User"
+    assert quiz["question_count"] == 0
+    assert quiz["attempt_count"] == 0
+
+    assert all(
+        discovered_quiz["title"] != "Secret Python Quiz"
+        for discovered_quiz in data["quizzes"]
+    )
+
+
+def test_discover_quizzes_supports_search_and_category_filter(client):
+    headers = register_and_login(
+        client,
+        email="discovery-filter@example.com",
+    )
+
+    quizzes = [
+        {
+            "title": "Python Fundamentals",
+            "description": "Learn Python programming",
+            "visibility": "public",
+            "category": "Programming",
+        },
+        {
+            "title": "JavaScript Basics",
+            "description": "Learn JavaScript",
+            "visibility": "public",
+            "category": "Programming",
+        },
+        {
+            "title": "World History",
+            "description": "Explore important historical events",
+            "visibility": "public",
+            "category": "History",
+        },
+    ]
+
+    for quiz in quizzes:
+        response = client.post(
+            "/api/v1/quizzes",
+            headers=headers,
+            json=quiz,
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        "/api/v1/quizzes/discover",
+        headers=headers,
+        params={
+            "search": "python",
+            "category": "Programming",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["total"] == 1
+    assert len(data["quizzes"]) == 1
+    assert data["quizzes"][0]["title"] == "Python Fundamentals"
+
+
+def test_discover_quizzes_is_paginated(client):
+    headers = register_and_login(
+        client,
+        email="discovery-pagination@example.com",
+    )
+
+    for index in range(6):
+        response = client.post(
+            "/api/v1/quizzes",
+            headers=headers,
+            json={
+                "title": f"Public Quiz {index + 1}",
+                "visibility": "public",
+            },
+        )
+        assert response.status_code == 201
+
+    first_page_response = client.get(
+        "/api/v1/quizzes/discover",
+        headers=headers,
+    )
+
+    assert first_page_response.status_code == 200
+
+    first_page = first_page_response.json()
+
+    assert first_page["total"] == 6
+    assert first_page["page"] == 1
+    assert first_page["page_size"] == 5
+    assert first_page["total_pages"] == 2
+    assert len(first_page["quizzes"]) == 5
+
+    second_page_response = client.get(
+        "/api/v1/quizzes/discover",
+        headers=headers,
+        params={"page": 2},
+    )
+
+    assert second_page_response.status_code == 200
+
+    second_page = second_page_response.json()
+
+    assert second_page["page"] == 2
+    assert len(second_page["quizzes"]) == 1
+
+
+def test_discovery_overview_returns_featured_and_public_categories(client):
+    headers = register_and_login(
+        client,
+        email="discovery-overview@example.com",
+    )
+
+    public_quizzes = [
+        ("Python Quiz", "Programming"),
+        ("Algebra Quiz", "Mathematics"),
+        ("Space Quiz", "Science"),
+        ("History Quiz", "History"),
+        ("Geography Quiz", "Geography"),
+    ]
+
+    for title, category in public_quizzes:
+        response = client.post(
+            "/api/v1/quizzes",
+            headers=headers,
+            json={
+                "title": title,
+                "visibility": "public",
+                "category": category,
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Secret Quiz",
+            "visibility": "unlisted",
+            "category": "Secret Category",
+        },
+    )
+    assert response.status_code == 201
+
+    response = client.get(
+        "/api/v1/quizzes/discover/overview",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["featured"]) == 4
+    assert all(
+        quiz["visibility"] == "public"
+        for quiz in data["featured"]
+    )
+
+    assert set(data["categories"]) == {
+        "Programming",
+        "Mathematics",
+        "Science",
+        "History",
+        "Geography",
+    }
+
+    assert "Secret Category" not in data["categories"]
+
+
+def test_discover_quizzes_requires_authentication(client):
+    response = client.get("/api/v1/quizzes/discover")
+
+    assert response.status_code in (401, 403)
+
+
+def test_discovery_overview_requires_authentication(client):
+    response = client.get("/api/v1/quizzes/discover/overview")
+
+    assert response.status_code in (401, 403)
+
+
 def test_get_quiz(client):
     headers = register_and_login(client)
 

@@ -1,12 +1,13 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.quiz import Quiz
+from app.models.quiz_attempt import QuizAttempt
 from app.models.user import User
 from app.schemas.quiz import (
     QuizCreate,
@@ -14,7 +15,10 @@ from app.schemas.quiz import (
     QuizLandingResponse,
     QuizListResponse,
     QuizResponse,
+    QuizDiscoveryResponse,
     QuizTakeResponse,
+    QuizDiscoveryPageResponse,
+    QuizDiscoveryOverviewResponse,
     QuizUpdate,
 )
 from app.models.question import Question
@@ -82,6 +86,165 @@ def list_quizzes(
         )
         for quiz in quizzes
     ]
+
+
+@router.get(
+    "/discover",
+    response_model=QuizDiscoveryPageResponse,
+)
+def discover_quizzes(
+    search: str | None = Query(default=None, max_length=100),
+    category: str | None = Query(default=None, max_length=100),
+    sort: str = Query(
+        default="popular",
+        pattern="^(popular|newest|oldest)$",
+    ),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=5, ge=1, le=20),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QuizDiscoveryPageResponse:
+    filters = [Quiz.visibility == "public"]
+
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+        filters.append(
+            Quiz.title.ilike(search_term)
+            | Quiz.description.ilike(search_term)
+            | User.display_name.ilike(search_term)
+            | Quiz.category.ilike(search_term)
+        )
+
+    if category and category.strip():
+        filters.append(
+            func.lower(Quiz.category) == category.strip().lower()
+        )
+
+    total = db.scalar(
+        select(func.count(Quiz.id))
+        .join(User, User.id == Quiz.owner_id)
+        .where(*filters)
+    ) or 0
+
+    attempt_count = func.count(func.distinct(QuizAttempt.id))
+
+    if sort == "popular":
+        order_by = (
+            attempt_count.desc(),
+            Quiz.created_at.desc(),
+        )
+    elif sort == "oldest":
+        order_by = (Quiz.created_at.asc(),)
+    else:
+        order_by = (Quiz.created_at.desc(),)
+
+    rows = db.execute(
+        select(
+            Quiz,
+            User.display_name.label("creator_name"),
+            func.count(func.distinct(Question.id)).label("question_count"),
+            func.count(func.distinct(QuizAttempt.id)).label("attempt_count"),
+        )
+        .join(User, User.id == Quiz.owner_id)
+        .outerjoin(Question, Question.quiz_id == Quiz.id)
+        .outerjoin(QuizAttempt, QuizAttempt.quiz_id == Quiz.id)
+        .where(*filters)
+        .group_by(Quiz.id, User.display_name)
+        .order_by(*order_by)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+
+    quizzes = [
+        QuizDiscoveryResponse(
+            id=quiz.id,
+            owner_id=quiz.owner_id,
+            title=quiz.title,
+            description=quiz.description,
+            visibility=quiz.visibility,
+            category=quiz.category,
+            tags=quiz.tags,
+            creator_name=creator_name,
+            question_count=question_count,
+            attempt_count=attempt_count,
+            created_at=quiz.created_at,
+            updated_at=quiz.updated_at,
+        )
+        for quiz, creator_name, question_count, attempt_count in rows
+    ]
+
+    total_pages = (total + page_size - 1) // page_size
+
+    return QuizDiscoveryPageResponse(
+        quizzes=quizzes,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+
+@router.get(
+    "/discover/overview",
+    response_model=QuizDiscoveryOverviewResponse,
+)
+def get_discovery_overview(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QuizDiscoveryOverviewResponse:
+    featured_rows = db.execute(
+        select(
+            Quiz,
+            User.display_name.label("creator_name"),
+            func.count(func.distinct(Question.id)).label("question_count"),
+            func.count(func.distinct(QuizAttempt.id)).label("attempt_count"),
+        )
+        .join(User, User.id == Quiz.owner_id)
+        .outerjoin(Question, Question.quiz_id == Quiz.id)
+        .outerjoin(QuizAttempt, QuizAttempt.quiz_id == Quiz.id)
+        .where(Quiz.visibility == "public")
+        .group_by(Quiz.id, User.display_name)
+        .order_by(
+            func.count(func.distinct(QuizAttempt.id)).desc(),
+            Quiz.created_at.desc(),
+        )
+        .limit(4)
+    ).all()
+
+    featured = [
+        QuizDiscoveryResponse(
+            id=quiz.id,
+            owner_id=quiz.owner_id,
+            title=quiz.title,
+            description=quiz.description,
+            visibility=quiz.visibility,
+            category=quiz.category,
+            tags=quiz.tags,
+            creator_name=creator_name,
+            question_count=question_count,
+            attempt_count=attempt_count,
+            created_at=quiz.created_at,
+            updated_at=quiz.updated_at,
+        )
+        for quiz, creator_name, question_count, attempt_count in featured_rows
+    ]
+
+    categories = list(
+        db.scalars(
+            select(Quiz.category)
+            .where(
+                Quiz.visibility == "public",
+                Quiz.category.is_not(None),
+            )
+            .distinct()
+            .order_by(Quiz.category)
+        )
+    )
+
+    return QuizDiscoveryOverviewResponse(
+        featured=featured,
+        categories=categories,
+    )
 
 
 @router.get(
