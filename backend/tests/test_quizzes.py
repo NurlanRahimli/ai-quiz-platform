@@ -136,6 +136,8 @@ def test_get_quiz(client):
     assert response.status_code == 200
     assert response.json()["id"] == quiz_id
     assert response.json()["title"] == "Math Quiz"
+    assert response.json()["creator_name"] == "Quiz User"
+    assert response.json()["question_count"] == 0
 
 
 def test_update_quiz(client):
@@ -190,8 +192,7 @@ def test_delete_quiz(client):
 
     assert get_response.status_code == 404
 
-
-def test_user_cannot_get_another_users_quiz(client):
+def test_user_can_view_another_users_quiz_details(client):
     user_a_headers = register_and_login(
         client,
         email="owner@example.com",
@@ -200,7 +201,7 @@ def test_user_cannot_get_another_users_quiz(client):
     create_response = client.post(
         "/api/v1/quizzes",
         headers=user_a_headers,
-        json={"title": "Private Quiz"},
+        json={"title": "Shared Quiz"},
     )
 
     quiz_id = create_response.json()["id"]
@@ -215,7 +216,14 @@ def test_user_cannot_get_another_users_quiz(client):
         headers=user_b_headers,
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == quiz_id
+    assert data["title"] == "Shared Quiz"
+    assert data["creator_name"] == "Quiz User"
+    assert data["question_count"] == 0
 
 
 def test_user_cannot_update_another_users_quiz(client):
@@ -336,7 +344,7 @@ def test_get_quiz_includes_questions(client):
     assert written_response.status_code == 201
 
     response = client.get(
-        f"/api/v1/quizzes/{quiz_id}",
+        f"/api/v1/quizzes/{quiz_id}/edit",
         headers=headers,
     )
 
@@ -356,6 +364,33 @@ def test_get_quiz_includes_questions(client):
     assert data["questions"][1]["question_type"] == "written_answer"
     assert data["questions"][1]["text"] == "Explain closures."
     assert data["questions"][1]["answer_choices"] == []
+
+
+def test_user_cannot_get_another_users_quiz_for_editing(client):
+    owner_headers = register_and_login(
+        client,
+        email="edit-owner@example.com",
+    )
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=owner_headers,
+        json={"title": "Owner Only Quiz"},
+    )
+
+    quiz_id = create_response.json()["id"]
+
+    other_user_headers = register_and_login(
+        client,
+        email="edit-other@example.com",
+    )
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz_id}/edit",
+        headers=other_user_headers,
+    )
+
+    assert response.status_code == 404
 
 
 def test_take_quiz_does_not_expose_correct_answers(client):

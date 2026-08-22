@@ -11,6 +11,7 @@ import EditQuizPage from "./pages/quizzes/EditQuizPage";
 import TakeQuizPage from "./pages/quizzes/TakeQuizPage";
 import QuizResultsPage from "./pages/quizzes/QuizResultsPage";
 import QuizAttemptHistoryPage from "./pages/quizzes/QuizAttemptHistoryPage";
+import QuizDetailsPage from "./pages/quizzes/QuizDetailsPage";
 
 function ProtectedAppLayout() {
   return (
@@ -18,7 +19,8 @@ function ProtectedAppLayout() {
       <Routes>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/quizzes/new" element={<CreateQuizPage />} />
-        <Route path="/quizzes/:quizId" element={<EditQuizPage />} />
+        <Route path="/quizzes/:quizId" element={<QuizDetailsPage />} />
+        <Route path="/quizzes/edit/:quizId" element={<EditQuizPage />} />
         <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
         <Route
           path="/quizzes/:quizId/attempts/:attemptId/results"

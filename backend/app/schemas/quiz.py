@@ -79,3 +79,16 @@ class QuizTakeResponse(BaseModel):
     title: str
     description: str | None
     questions: list[QuizTakeQuestionResponse]
+
+
+class QuizLandingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    title: str
+    description: str | None
+    creator_name: str
+    question_count: int
+    created_at: datetime
+    updated_at: datetime
