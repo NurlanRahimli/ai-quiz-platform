@@ -245,7 +245,10 @@
 }
 
 .profile-quiz-card {
+  display: flex;
   min-width: 0;
+  height: 100%;
+  flex-direction: column;
   border: 1px solid var(--color-border-subtle);
   border-radius: 19px;
   background: var(--color-surface);
@@ -273,7 +276,6 @@
   display: flex;
   height: 118px;
   align-items: flex-end;
-  justify-content: space-between;
   padding: 18px;
   background:
     radial-gradient(
@@ -324,18 +326,63 @@
   box-shadow: 0 8px 20px rgb(76 29 149 / 8%);
 }
 
-.profile-quiz-card__visual > span {
-  position: relative;
+.profile-quiz-card__visibility {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
   z-index: 1;
-  color: var(--color-primary-400);
-  font-size: 11px;
+
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
+.profile-quiz-card__visibility--public {
+  background: rgb(34 197 94 / 10%);
+  border-color: rgb(34 197 94 / 18%);
+  color: rgb(22 163 74);
+}
+
+.profile-quiz-card__visibility--unlisted {
+  background: rgb(139 92 246 / 10%);
+  border-color: rgb(139 92 246 / 18%);
+  color: var(--color-primary-400);
+}
+
 .profile-quiz-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   padding: 19px;
+}
+
+.profile-quiz-card__footer {
+  margin-top: auto;
+}
+
+.profile-quiz-card__category {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 8px;
+
+  color: var(--color-primary-400);
+
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .profile-quiz-card__body h3 {
@@ -359,13 +406,44 @@
   -webkit-line-clamp: 2;
 }
 
+.profile-quiz-card__tags {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  margin: -4px 0 16px;
+}
+
+.profile-quiz-card__tag {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 25px;
+  align-items: center;
+
+  padding: 4px 9px;
+
+  overflow: hidden;
+
+  background: rgb(139 92 246 / 8%);
+  border: 1px solid rgb(139 92 246 / 13%);
+  border-radius: var(--radius-full);
+
+  color: var(--color-primary-400);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .profile-quiz-card__creator {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 7px;
 
-  margin: -6px 0 16px;
+  margin: 0 0 16px;
 
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);

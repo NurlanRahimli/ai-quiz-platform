@@ -24,6 +24,9 @@ type Quiz = {
   owner_id: string
   title: string
   description: string | null
+  visibility: "public" | "unlisted";
+  category: string | null
+  tags: string[]
   creator_name: string
   created_at: string
   updated_at: string
@@ -318,16 +321,42 @@ function ProfilePage() {
                       />
                     </div>
 
-                    <span>Quiz</span>
+                    <span
+                      className={`profile-quiz-card__visibility profile-quiz-card__visibility--${quiz.visibility}`}
+                    >
+                      {quiz.visibility === "public" ? "Public" : "Unlisted"}
+                    </span>
                   </div>
 
                   <div className="profile-quiz-card__body">
+                    {quiz.category && (
+                      <span className="profile-quiz-card__category">
+                        {quiz.category}
+                      </span>
+                    )}
+
                     <h3>{quiz.title}</h3>
 
                     <p>
                       {quiz.description ||
                         "No description has been added yet."}
                     </p>
+
+                    {quiz.tags.length > 0 && (
+                      <div
+                        className="profile-quiz-card__tags"
+                        aria-label="Quiz tags"
+                      >
+                        {quiz.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="profile-quiz-card__tag"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="profile-quiz-card__creator">
                       <CircleUserRound

@@ -68,6 +68,8 @@ type Quiz = {
   owner_id: string
   title: string
   description: string | null
+  category: string | null
+  tags: string[]
   visibility: QuizVisibility
   created_at: string
   updated_at: string
@@ -77,19 +79,37 @@ type Quiz = {
 type QuizForm = {
   title: string
   description: string
+  category: string
+  tags: string[]
   visibility: QuizVisibility
 }
 
 const QUESTIONS_PER_BATCH = 10
+
+const QUIZ_CATEGORIES = [
+  "General Knowledge",
+  "Math",
+  "Science",
+  "Technology",
+  "Programming",
+  "History",
+  "Geography",
+  "Language",
+  "Business",
+  "Other",
+]
 
 function EditQuizPage() {
   const { quizId } = useParams()
   const navigate = useNavigate()
 
   const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [tagInput, setTagInput] = useState("")
   const [form, setForm] = useState<QuizForm>({
     title: "",
     description: "",
+    category: "",
+    tags: [],
     visibility: "unlisted",
   })
 
@@ -176,6 +196,8 @@ function EditQuizPage() {
         setForm({
           title: response.data.title,
           description: response.data.description ?? "",
+          category: response.data.category ?? "",
+          tags: response.data.tags ?? [],
           visibility: response.data.visibility,
         })
         const draftKey = `edit-quiz-draft:${response.data.id}`
@@ -252,6 +274,43 @@ function EditQuizPage() {
   ])
 
 
+  const addTag = () => {
+    const tag = tagInput.trim()
+
+    if (!tag || form.tags.length >= 5) {
+      return
+    }
+
+    const alreadyExists = form.tags.some(
+      (existingTag) => existingTag.toLowerCase() === tag.toLowerCase(),
+    )
+
+    if (alreadyExists) {
+      setTagInput("")
+      return
+    }
+
+    setForm((current) => ({
+      ...current,
+      tags: [...current.tags, tag],
+    }))
+
+    setTagInput("")
+    setError("")
+    setSuccessMessage("")
+  }
+
+  const removeTag = (tag: string) => {
+    setForm((current) => ({
+      ...current,
+      tags: current.tags.filter((currentTag) => currentTag !== tag),
+    }))
+
+    setError("")
+    setSuccessMessage("")
+  }
+
+
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>,
   ) => {
@@ -288,6 +347,8 @@ function EditQuizPage() {
         {
           title,
           description: form.description.trim() || null,
+          category: form.category.trim() || null,
+          tags: form.tags,
           visibility: form.visibility,
         },
       )
@@ -299,6 +360,8 @@ function EditQuizPage() {
             title: response.data.title,
             description: response.data.description,
             visibility: response.data.visibility,
+            category: response.data.category,
+            tags: response.data.tags,
             updated_at: response.data.updated_at,
           }
           : current,
@@ -307,6 +370,8 @@ function EditQuizPage() {
       setForm({
         title: response.data.title,
         description: response.data.description ?? "",
+        category: response.data.category ?? "",
+        tags: response.data.tags ?? [],
         visibility: response.data.visibility,
       })
 
@@ -912,6 +977,98 @@ function EditQuizPage() {
               <div className="edit-quiz-details__character-count">
                 {form.description.length}/1000
               </div>
+            </div>
+
+            <div className="edit-quiz-details__field">
+              <div className="edit-quiz-details__label-row">
+                <label htmlFor="edit-quiz-category">Category</label>
+                <span>Optional</span>
+              </div>
+
+              <select
+                id="edit-quiz-category"
+                className="edit-quiz-details__select"
+                value={form.category}
+                disabled={isSaving}
+                onChange={(event) => {
+                  setForm((current) => ({
+                    ...current,
+                    category: event.target.value,
+                  }))
+                  setError("")
+                  setSuccessMessage("")
+                }}
+              >
+                <option value="">Select a category</option>
+
+                {QUIZ_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="edit-quiz-details__field">
+              <div className="edit-quiz-details__label-row">
+                <label htmlFor="edit-quiz-tags">Tags</label>
+                <span>{form.tags.length} / 5</span>
+              </div>
+
+              {form.tags.length > 0 && (
+                <div className="edit-quiz-tags">
+                  {form.tags.map((tag) => (
+                    <span key={tag} className="edit-quiz-tag">
+                      {tag}
+
+                      <button
+                        type="button"
+                        aria-label={`Remove ${tag}`}
+                        onClick={() => removeTag(tag)}
+                        disabled={isSaving}
+                      >
+                        <X size={13} strokeWidth={2.2} aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="edit-quiz-tag-input">
+                <input
+                  id="edit-quiz-tags"
+                  type="text"
+                  value={tagInput}
+                  maxLength={50}
+                  disabled={isSaving || form.tags.length >= 5}
+                  placeholder={
+                    form.tags.length >= 5
+                      ? "Maximum 5 tags"
+                      : "Add a tag..."
+                  }
+                  onChange={(event) => setTagInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      addTag()
+                    }
+                  }}
+                />
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!tagInput.trim() || form.tags.length >= 5}
+                  onClick={addTag}
+                >
+                  Add
+                </Button>
+              </div>
+
+              <p className="edit-quiz-details__hint">
+                Add keywords that describe your quiz.
+              </p>
             </div>
 
             <div className="edit-quiz-details__field">
