@@ -7,6 +7,7 @@ import Swal from "sweetalert2";
 
 import {
   ArrowRight,
+  CircleUserRound,
   FileQuestion,
   Plus,
   RefreshCw,
@@ -26,6 +27,7 @@ type Quiz = {
   owner_id: string;
   title: string;
   description: string | null;
+  creator_name: string;
   created_at: string;
   updated_at: string;
 };
@@ -323,6 +325,15 @@ function DashboardPage() {
                     {quiz.description ||
                       "No description has been added yet."}
                   </p>
+
+                  <div className="dashboard-quiz-card__creator">
+                    <CircleUserRound
+                      size={15}
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
+                    <span>By {quiz.creator_name}</span>
+                  </div>
                 </div>
 
                 <div className="dashboard-quiz-card__footer">

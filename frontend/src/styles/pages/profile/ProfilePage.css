@@ -359,6 +359,30 @@
   -webkit-line-clamp: 2;
 }
 
+.profile-quiz-card__creator {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+
+  margin: -6px 0 16px;
+
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.profile-quiz-card__creator svg {
+  flex: 0 0 auto;
+  color: var(--color-primary-400);
+}
+
+.profile-quiz-card__creator span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .profile-quiz-card__footer {
   display: flex;
   align-items: center;

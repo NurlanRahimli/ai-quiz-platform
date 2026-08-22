@@ -5,6 +5,7 @@ import Swal from "sweetalert2"
 import {
   ArrowRight,
   CalendarDays,
+  CircleUserRound,
   FileQuestion,
   Grid3X3,
   Pencil,
@@ -23,6 +24,7 @@ type Quiz = {
   owner_id: string
   title: string
   description: string | null
+  creator_name: string
   created_at: string
   updated_at: string
 }
@@ -326,6 +328,15 @@ function ProfilePage() {
                       {quiz.description ||
                         "No description has been added yet."}
                     </p>
+
+                    <div className="profile-quiz-card__creator">
+                      <CircleUserRound
+                        size={15}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                      <span>By {quiz.creator_name}</span>
+                    </div>
 
                     <div className="profile-quiz-card__footer">
                       <span>
