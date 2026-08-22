@@ -121,10 +121,37 @@
 
 .app-sidebar__user {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: var(--space-3);
 
   padding: var(--space-3);
+
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.app-sidebar__user:hover {
+  background: var(--color-surface-hover);
+}
+
+.app-sidebar__user:active {
+  transform: scale(0.99);
+}
+
+.app-sidebar__user:focus-visible {
+  outline: 3px solid rgb(139 92 246 / 25%);
+  outline-offset: 2px;
 }
 
 .app-sidebar__avatar {

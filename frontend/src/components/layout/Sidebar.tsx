@@ -89,8 +89,18 @@ export default function Sidebar({
         <div className="app-sidebar__theme">
           <ThemeToggle />
         </div>
-        <div className="app-sidebar__user">
-          <div className="app-sidebar__avatar">{initial}</div>
+        <button
+          type="button"
+          className="app-sidebar__user"
+          onClick={() => {
+            navigate("/profile")
+            onClose()
+          }}
+          aria-label="Open profile"
+        >
+          <div className="app-sidebar__avatar" aria-hidden="true">
+            {initial}
+          </div>
 
           <div className="app-sidebar__user-info">
             <span className="app-sidebar__user-name">
@@ -101,7 +111,7 @@ export default function Sidebar({
               {user?.email}
             </span>
           </div>
-        </div>
+        </button>
 
         <button
           type="button"

@@ -18,6 +18,7 @@ from app.schemas.user import (
     UserLogin,
     UserRegister,
     UserResponse,
+    UserUpdate,
 )
 
 
@@ -31,6 +32,24 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 def get_me(
     current_user: User = Depends(get_current_user),
 ) -> User:
+    return current_user
+
+
+@router.patch(
+    "/me",
+    response_model=UserResponse,
+)
+def update_me(
+    user_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    current_user.display_name = user_data.display_name
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
     return current_user
     
 
