@@ -499,3 +499,205 @@ def test_authenticated_user_can_take_another_users_quiz(client):
 
     assert response.status_code == 200
     assert response.json()["id"] == quiz_id
+
+def test_create_quiz_defaults_to_unlisted(client):
+    headers = register_and_login(
+        client,
+        email="visibility-default@example.com",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Default Visibility Quiz",
+            "description": "Should be unlisted by default",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["visibility"] == "unlisted"
+
+
+def test_create_public_quiz(client):
+    headers = register_and_login(
+        client,
+        email="visibility-public@example.com",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Public Quiz",
+            "visibility": "public",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["visibility"] == "public"
+
+
+def test_create_explicitly_unlisted_quiz(client):
+    headers = register_and_login(
+        client,
+        email="visibility-unlisted@example.com",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Unlisted Quiz",
+            "visibility": "unlisted",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["visibility"] == "unlisted"
+
+
+def test_create_quiz_rejects_invalid_visibility(client):
+    headers = register_and_login(
+        client,
+        email="visibility-invalid@example.com",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Invalid Visibility Quiz",
+            "visibility": "private",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_owner_can_change_quiz_visibility(client):
+    headers = register_and_login(
+        client,
+        email="visibility-owner@example.com",
+    )
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Visibility Toggle Quiz",
+        },
+    )
+
+    assert create_response.status_code == 201
+    quiz_id = create_response.json()["id"]
+    assert create_response.json()["visibility"] == "unlisted"
+
+    public_response = client.patch(
+        f"/api/v1/quizzes/{quiz_id}",
+        headers=headers,
+        json={
+            "visibility": "public",
+        },
+    )
+
+    assert public_response.status_code == 200
+    assert public_response.json()["visibility"] == "public"
+
+    unlisted_response = client.patch(
+        f"/api/v1/quizzes/{quiz_id}",
+        headers=headers,
+        json={
+            "visibility": "unlisted",
+        },
+    )
+
+    assert unlisted_response.status_code == 200
+    assert unlisted_response.json()["visibility"] == "unlisted"
+
+
+def test_non_owner_cannot_change_quiz_visibility(client):
+    owner_headers = register_and_login(
+        client,
+        email="visibility-real-owner@example.com",
+    )
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=owner_headers,
+        json={
+            "title": "Protected Visibility Quiz",
+        },
+    )
+
+    assert create_response.status_code == 201
+    quiz_id = create_response.json()["id"]
+
+    other_headers = register_and_login(
+        client,
+        email="visibility-other-user@example.com",
+    )
+
+    response = client.patch(
+        f"/api/v1/quizzes/{quiz_id}",
+        headers=other_headers,
+        json={
+            "visibility": "public",
+        },
+    )
+
+    assert response.status_code == 404
+
+
+def test_quiz_landing_response_includes_visibility(client):
+    headers = register_and_login(
+        client,
+        email="visibility-landing@example.com",
+    )
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Public Landing Quiz",
+            "visibility": "public",
+        },
+    )
+
+    assert create_response.status_code == 201
+    quiz_id = create_response.json()["id"]
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz_id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["visibility"] == "public"
+
+
+def test_quiz_edit_response_includes_visibility(client):
+    headers = register_and_login(
+        client,
+        email="visibility-edit@example.com",
+    )
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Unlisted Editor Quiz",
+            "visibility": "unlisted",
+        },
+    )
+
+    assert create_response.status_code == 201
+    quiz_id = create_response.json()["id"]
+
+    response = client.get(
+        f"/api/v1/quizzes/{quiz_id}/edit",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["visibility"] == "unlisted"

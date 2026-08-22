@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +29,12 @@ class Quiz(Base):
     description: Mapped[str | None] = mapped_column(
         String(1000),
         nullable=True,
+    )
+    visibility: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="unlisted",
+        server_default=text("'unlisted'"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
