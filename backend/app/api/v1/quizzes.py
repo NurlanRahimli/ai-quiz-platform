@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.auth import get_current_user
@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.quiz import (
     QuizCreate,
     QuizDetailResponse,
+    QuizLandingResponse,
     QuizResponse,
     QuizTakeResponse,
     QuizUpdate,
@@ -92,9 +93,54 @@ def take_quiz(
 
 @router.get(
     "/{quiz_id}",
-    response_model=QuizDetailResponse,
+    response_model=QuizLandingResponse,
 )
 def get_quiz(
+    quiz_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QuizLandingResponse:
+    quiz = db.scalar(
+        select(Quiz).where(Quiz.id == quiz_id)
+    )
+
+    if quiz is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found",
+        )
+
+    creator = db.get(User, quiz.owner_id)
+
+    if creator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz creator not found",
+        )
+
+    question_count = db.scalar(
+        select(func.count())
+        .select_from(Question)
+        .where(Question.quiz_id == quiz.id)
+    )
+
+    return QuizLandingResponse(
+        id=quiz.id,
+        owner_id=quiz.owner_id,
+        title=quiz.title,
+        description=quiz.description,
+        creator_name=creator.display_name,
+        question_count=question_count or 0,
+        created_at=quiz.created_at,
+        updated_at=quiz.updated_at,
+    )
+
+
+@router.get(
+    "/{quiz_id}/edit",
+    response_model=QuizDetailResponse,
+)
+def get_quiz_for_editing(
     quiz_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -118,6 +164,7 @@ def get_quiz(
         )
 
     return quiz
+
 
 
 @router.patch(

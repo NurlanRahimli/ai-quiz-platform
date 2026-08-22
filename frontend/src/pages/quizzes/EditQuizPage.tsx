@@ -161,7 +161,7 @@ function EditQuizPage() {
 
       try {
         const response = await apiClient.get<Quiz>(
-          `/quizzes/${quizId}`,
+          `/quizzes/${quizId}/edit`,
         )
 
         setQuiz(response.data)
