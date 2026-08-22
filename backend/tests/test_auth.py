@@ -298,5 +298,106 @@ def test_get_current_user_requires_authentication(client):
     assert response.status_code in (401, 403)
 
 
+def test_update_current_user_display_name(client):
+    register_user(
+        client,
+        email="profile@example.com",
+    )
 
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "profile@example.com",
+            "password": "Testing123!",
+        },
+    )
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "display_name": "Updated Name",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["display_name"] == "Updated Name"
+    assert data["email"] == "profile@example.com"
+
+
+def test_update_current_user_trims_display_name(client):
+    register_user(
+        client,
+        email="trim-profile@example.com",
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "trim-profile@example.com",
+            "password": "Testing123!",
+        },
+    )
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "display_name": "   New Name   ",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["display_name"] == "New Name"
+
+
+def test_update_current_user_rejects_invalid_display_name(client):
+    register_user(
+        client,
+        email="invalid-profile@example.com",
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "invalid-profile@example.com",
+            "password": "Testing123!",
+        },
+    )
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "display_name": " ",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_current_user_requires_authentication(client):
+    response = client.patch(
+        "/api/v1/auth/me",
+        json={
+            "display_name": "Updated Name",
+        },
+    )
+
+    assert response.status_code in (401, 403)
 

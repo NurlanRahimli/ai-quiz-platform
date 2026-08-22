@@ -12,6 +12,7 @@ import TakeQuizPage from "./pages/quizzes/TakeQuizPage";
 import QuizResultsPage from "./pages/quizzes/QuizResultsPage";
 import QuizAttemptHistoryPage from "./pages/quizzes/QuizAttemptHistoryPage";
 import QuizDetailsPage from "./pages/quizzes/QuizDetailsPage";
+import ProfilePage from "./pages/profile/ProfilePage";
 
 function ProtectedAppLayout() {
   return (
@@ -22,6 +23,7 @@ function ProtectedAppLayout() {
         <Route path="/quizzes/:quizId" element={<QuizDetailsPage />} />
         <Route path="/quizzes/edit/:quizId" element={<EditQuizPage />} />
         <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route
           path="/quizzes/:quizId/attempts/:attemptId/results"
           element={<QuizResultsPage />}

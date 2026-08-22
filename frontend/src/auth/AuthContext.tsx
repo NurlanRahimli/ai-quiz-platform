@@ -53,6 +53,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+
+  const refreshUser = async () => {
+    const accessToken =
+      token ?? localStorage.getItem(TOKEN_STORAGE_KEY)
+
+    if (!accessToken) {
+      return
+    }
+
+    const currentUser = await fetchCurrentUser(accessToken)
+    setUser(currentUser)
+  }
+
+
   const logout = () => {
     localStorage.removeItem(TOKEN_STORAGE_KEY)
     setToken(null)
@@ -96,6 +110,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     login,
     logout,
+    refreshUser,
   }
 
   return (
