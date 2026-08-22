@@ -112,6 +112,7 @@ def test_list_quizzes_returns_only_current_users_quizzes(client):
 
     assert len(data) == 1
     assert data[0]["title"] == "User A Quiz"
+    assert data[0]["creator_name"] == "Quiz User"
 
 
 def test_get_quiz(client):

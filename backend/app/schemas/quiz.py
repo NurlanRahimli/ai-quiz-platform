@@ -54,6 +54,10 @@ class QuizResponse(BaseModel):
     visibility: Literal["public", "unlisted"]
 
 
+class QuizListResponse(QuizResponse):
+    creator_name: str
+
+
 class QuizDetailResponse(QuizResponse):
     questions: list[QuestionResponse]
 

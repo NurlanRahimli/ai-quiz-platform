@@ -12,6 +12,7 @@ from app.schemas.quiz import (
     QuizCreate,
     QuizDetailResponse,
     QuizLandingResponse,
+    QuizListResponse,
     QuizResponse,
     QuizTakeResponse,
     QuizUpdate,
@@ -50,19 +51,33 @@ def create_quiz(
 
 @router.get(
     "",
-    response_model=list[QuizResponse],
+    response_model=list[QuizListResponse],
 )
 def list_quizzes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[Quiz]:
-    return list(
+) -> list[QuizListResponse]:
+    quizzes = list(
         db.scalars(
             select(Quiz)
             .where(Quiz.owner_id == current_user.id)
             .order_by(Quiz.created_at.desc())
         )
     )
+
+    return [
+        QuizListResponse(
+            id=quiz.id,
+            owner_id=quiz.owner_id,
+            title=quiz.title,
+            description=quiz.description,
+            visibility=quiz.visibility,
+            creator_name=current_user.display_name,
+            created_at=quiz.created_at,
+            updated_at=quiz.updated_at,
+        )
+        for quiz in quizzes
+    ]
 
 
 @router.get(
