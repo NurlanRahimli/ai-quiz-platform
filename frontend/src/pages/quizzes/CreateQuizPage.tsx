@@ -31,6 +31,8 @@ type QuizVisibility = "public" | "unlisted";
 type QuizForm = {
   title: string;
   description: string;
+  category: string;
+  tags: string[];
   visibility: QuizVisibility;
 };
 
@@ -58,7 +60,7 @@ type NewQuestionChoice = {
 };
 
 type CreateQuizDraft = {
-  form: QuizForm;
+  form: Partial<QuizForm>;
   questions: DraftQuestion[];
   isAddingQuestion: boolean;
   newQuestionType: NewQuestionType;
@@ -68,6 +70,19 @@ type CreateQuizDraft = {
 };
 
 const CREATE_QUIZ_DRAFT_KEY = "create-quiz-draft";
+
+const QUIZ_CATEGORIES = [
+  "Programming",
+  "Mathematics",
+  "Science",
+  "History",
+  "Geography",
+  "Language",
+  "Business",
+  "Technology",
+  "General Knowledge",
+  "Other",
+] as const;
 
 const defaultChoices: NewQuestionChoice[] = [
   {
@@ -110,16 +125,21 @@ function CreateQuizPage() {
   const navigate = useNavigate();
   const [initialDraft] = useState(loadCreateQuizDraft);
 
-  const [form, setForm] = useState<QuizForm>(
-    initialDraft?.form ?? {
-      title: "",
-      description: "",
-      visibility: "unlisted",
-    },
-  );
+  const [form, setForm] = useState<QuizForm>(() => {
+    const draftForm = initialDraft?.form;
+
+    return {
+      title: draftForm?.title ?? "",
+      description: draftForm?.description ?? "",
+      category: draftForm?.category ?? "",
+      tags: Array.isArray(draftForm?.tags) ? draftForm.tags : [],
+      visibility: draftForm?.visibility ?? "unlisted",
+    };
+  });
 
   const [errors, setErrors] = useState<QuizErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tagInput, setTagInput] = useState("");
   const [questions, setQuestions] = useState<DraftQuestion[]>(
     initialDraft?.questions ?? [],
   );
@@ -368,6 +388,37 @@ function CreateQuizPage() {
     return Object.keys(nextErrors).length === 0;
   };
 
+  const addTag = () => {
+    const tag = tagInput.trim();
+
+    if (!tag || form.tags.length >= 5) {
+      return;
+    }
+
+    const alreadyExists = form.tags.some(
+      (existingTag) => existingTag.toLowerCase() === tag.toLowerCase(),
+    );
+
+    if (alreadyExists) {
+      setTagInput("");
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      tags: [...current.tags, tag],
+    }));
+
+    setTagInput("");
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setForm((current) => ({
+      ...current,
+      tags: current.tags.filter((tag) => tag !== tagToRemove),
+    }));
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -381,6 +432,8 @@ function CreateQuizPage() {
       const response = await apiClient.post<QuizResponse>("/quizzes", {
         title: form.title.trim(),
         description: form.description.trim() || null,
+        category: form.category.trim() || null,
+        tags: form.tags,
         visibility: form.visibility,
       });
 
@@ -545,6 +598,96 @@ function CreateQuizPage() {
 
                 <div className="create-quiz-form__field">
                   <div className="create-quiz-form__label-row">
+                    <label htmlFor="quiz-category">Category</label>
+                    <span>Optional</span>
+                  </div>
+
+                  <select
+                    id="quiz-category"
+                    className="create-quiz-form__select"
+                    value={form.category}
+                    disabled={isSubmitting}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        category: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Select a category</option>
+
+                    {QUIZ_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="create-quiz-form__field">
+                  <div className="create-quiz-form__label-row">
+                    <label htmlFor="quiz-tags">Tags</label>
+                    <span>{form.tags.length} / 5</span>
+                  </div>
+
+                  {form.tags.length > 0 && (
+                    <div className="create-quiz-tags">
+                      {form.tags.map((tag) => (
+                        <span key={tag} className="create-quiz-tag">
+                          {tag}
+
+                          <button
+                            type="button"
+                            aria-label={`Remove ${tag}`}
+                            onClick={() => removeTag(tag)}
+                            disabled={isSubmitting}
+                          >
+                            <X size={13} strokeWidth={2.2} aria-hidden="true" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="create-quiz-tag-input">
+                    <input
+                      id="quiz-tags"
+                      type="text"
+                      value={tagInput}
+                      maxLength={50}
+                      disabled={isSubmitting || form.tags.length >= 5}
+                      placeholder={
+                        form.tags.length >= 5
+                          ? "Maximum 5 tags"
+                          : "Add a tag..."
+                      }
+                      onChange={(event) => setTagInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addTag();
+                        }
+                      }}
+                    />
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={!tagInput.trim() || form.tags.length >= 5}
+                      onClick={addTag}
+                    >
+                      Add
+                    </Button>
+                  </div>
+
+                  <p className="create-quiz-form__hint">
+                    Add keywords that describe your quiz.
+                  </p>
+                </div>
+
+                <div className="create-quiz-form__field">
+                  <div className="create-quiz-form__label-row">
                     <label>Visibility</label>
                   </div>
 
@@ -557,11 +700,10 @@ function CreateQuizPage() {
                       type="button"
                       role="radio"
                       aria-checked={form.visibility === "unlisted"}
-                      className={`quiz-visibility-option ${
-                        form.visibility === "unlisted"
+                      className={`quiz-visibility-option ${form.visibility === "unlisted"
                           ? "quiz-visibility-option--selected"
                           : ""
-                      }`}
+                        }`}
                       disabled={isSubmitting}
                       onClick={() => updateField("visibility", "unlisted")}
                     >
@@ -590,11 +732,10 @@ function CreateQuizPage() {
                       type="button"
                       role="radio"
                       aria-checked={form.visibility === "public"}
-                      className={`quiz-visibility-option ${
-                        form.visibility === "public"
+                      className={`quiz-visibility-option ${form.visibility === "public"
                           ? "quiz-visibility-option--selected"
                           : ""
-                      }`}
+                        }`}
                       disabled={isSubmitting}
                       onClick={() => updateField("visibility", "public")}
                     >

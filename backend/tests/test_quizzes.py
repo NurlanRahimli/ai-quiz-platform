@@ -702,3 +702,124 @@ def test_quiz_edit_response_includes_visibility(client):
 
     assert response.status_code == 200
     assert response.json()["visibility"] == "unlisted"
+
+
+def test_create_quiz_with_category_and_tags(client):
+    headers = register_and_login(
+        client,
+        email="category-tags@example.com",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Python Fundamentals",
+            "description": "Test your Python knowledge",
+            "category": "Programming",
+            "tags": ["Python", "Beginner", "Fundamentals"],
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["category"] == "Programming"
+    assert data["tags"] == [
+        "Python",
+        "Beginner",
+        "Fundamentals",
+    ]
+
+
+def test_create_quiz_normalizes_tags(client):
+    headers = register_and_login(
+        client,
+        email="normalize-tags@example.com",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Normalized Tags Quiz",
+            "category": "  Programming  ",
+            "tags": [
+                " Python ",
+                "python",
+                "  Beginner  ",
+                "",
+                "   ",
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["category"] == "Programming"
+    assert data["tags"] == ["Python", "Beginner"]
+
+
+def test_update_quiz_category_and_tags(client):
+    headers = register_and_login(
+        client,
+        email="update-category-tags@example.com",
+    )
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Science Quiz",
+            "category": "Science",
+            "tags": ["Physics"],
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    quiz_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/api/v1/quizzes/{quiz_id}",
+        headers=headers,
+        json={
+            "category": "Mathematics",
+            "tags": ["Algebra", "Geometry"],
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["category"] == "Mathematics"
+    assert data["tags"] == ["Algebra", "Geometry"]
+
+
+def test_create_quiz_rejects_more_than_five_tags(client):
+    headers = register_and_login(
+        client,
+        email="too-many-tags@example.com",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Too Many Tags",
+            "tags": [
+                "One",
+                "Two",
+                "Three",
+                "Four",
+                "Five",
+                "Six",
+            ],
+        },
+    )
+
+    assert response.status_code == 422

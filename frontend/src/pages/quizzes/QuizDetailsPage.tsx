@@ -27,6 +27,8 @@ type QuizDetails = {
   owner_id: string;
   title: string;
   description: string | null;
+  category: string | null;
+  tags: string[];
   visibility: "public" | "unlisted";
   creator_name: string;
   question_count: number;
@@ -170,9 +172,27 @@ function QuizDetailsPage() {
                 <h1>{quiz.title}</h1>
 
                 <p className="quiz-details-description">
-                {quiz.description ||
-                    "No description has been added for this quiz yet."}
+                  {quiz.description || "No description has been added for this quiz yet."}
                 </p>
+
+                {(quiz.category || quiz.tags.length > 0) && (
+                  <div className="quiz-details-taxonomy">
+                    {quiz.category && (
+                      <span className="quiz-details-category">
+                        {quiz.category}
+                      </span>
+                    )}
+
+                    {quiz.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="quiz-details-tag"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <div className="quiz-details-creator">
                 <div

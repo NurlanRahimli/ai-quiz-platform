@@ -135,6 +135,38 @@
   overflow-wrap: anywhere;
 }
 
+.quiz-details-taxonomy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -10px 0 24px;
+}
+
+.quiz-details-category,
+.quiz-details-tag {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.quiz-details-category {
+  background: rgb(124 58 237 / 11%);
+  border: 1px solid rgb(124 58 237 / 18%);
+  color: var(--color-primary-400);
+}
+
+.quiz-details-tag {
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
 .quiz-details-creator {
   display: inline-flex;
   align-items: center;

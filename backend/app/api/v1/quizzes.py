@@ -40,6 +40,8 @@ def create_quiz(
         title=quiz_data.title,
         description=quiz_data.description,
         visibility=quiz_data.visibility,
+        category=quiz_data.category,
+        tags=quiz_data.tags,
     )
 
     db.add(quiz)
@@ -72,6 +74,8 @@ def list_quizzes(
             title=quiz.title,
             description=quiz.description,
             visibility=quiz.visibility,
+            category=quiz.category,
+            tags=quiz.tags,
             creator_name=current_user.display_name,
             created_at=quiz.created_at,
             updated_at=quiz.updated_at,
@@ -146,6 +150,8 @@ def get_quiz(
         title=quiz.title,
         description=quiz.description,
         visibility=quiz.visibility,
+        category=quiz.category,
+        tags=quiz.tags,
         creator_name=creator.display_name,
         question_count=question_count or 0,
         created_at=quiz.created_at,
