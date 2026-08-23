@@ -6,6 +6,7 @@ from app.api.v1.questions import router as questions_router
 from app.api.v1.attempts import router as attempts_router
 from app.api.v1.users import router as users_router
 from app.core.config import settings
+from app.api.v1.audit_logs import router as audit_logs_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,6 +23,11 @@ app.include_router(
 
 app.include_router(
     quizzes_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    audit_logs_router,
     prefix="/api/v1",
 )
 

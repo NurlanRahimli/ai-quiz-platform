@@ -22,6 +22,12 @@ from app.schemas.quiz import (
     QuizUpdate,
 )
 from app.models.question import Question
+from app.services.audit_service import (
+    QUIZ_CREATED,
+    QUIZ_DELETED,
+    QUIZ_UPDATED,
+    record_quiz_audit,
+)
 
 router = APIRouter(
     prefix="/quizzes",
@@ -49,6 +55,19 @@ def create_quiz(
     )
 
     db.add(quiz)
+
+    db.add(quiz)
+    db.flush()
+
+    record_quiz_audit(
+        db,
+        user_id=current_user.id,
+        quiz_id=quiz.id,
+        quiz_title=quiz.title,
+        creator_name=current_user.display_name,
+        action=QUIZ_CREATED,
+    )
+
     db.commit()
     db.refresh(quiz)
 
@@ -381,6 +400,16 @@ def update_quiz(
     for field, value in update_data.items():
         setattr(quiz, field, value)
 
+
+    record_quiz_audit(
+        db,
+        user_id=current_user.id,
+        quiz_id=quiz.id,
+        quiz_title=quiz.title,
+        creator_name=current_user.display_name,
+        action=QUIZ_UPDATED,
+    )
+
     db.commit()
     db.refresh(quiz)
 
@@ -408,6 +437,15 @@ def delete_quiz(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Quiz not found",
         )
+
+    record_quiz_audit(
+        db,
+        user_id=current_user.id,
+        quiz_id=quiz.id,
+        quiz_title=quiz.title,
+        creator_name=current_user.display_name,
+        action=QUIZ_DELETED,
+    )
 
     db.delete(quiz)
     db.commit()
