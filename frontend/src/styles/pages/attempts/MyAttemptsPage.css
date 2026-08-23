@@ -1,0 +1,812 @@
+/* =========================================================
+   MY ATTEMPTS PAGE
+   ========================================================= */
+
+.my-attempts-page {
+    min-height: 100%;
+    padding: 36px 32px 72px;
+    color: var(--color-text-primary);
+}
+
+.my-attempts-page__container {
+    width: min(100%, 1240px);
+    margin: 0 auto;
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.my-attempts-page__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 30px;
+}
+
+.my-attempts-page__header h1 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: clamp(1.8rem, 3vw, 2.25rem);
+    font-weight: 750;
+    line-height: 1.1;
+    letter-spacing: -0.035em;
+}
+
+.my-attempts-page__header p {
+    margin: 9px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 0.94rem;
+    line-height: 1.55;
+}
+
+
+/* =========================================================
+   EXPORT BUTTON
+   ========================================================= */
+
+.my-attempts-page__export {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    min-height: 43px;
+    padding: 0 16px;
+
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+}
+
+.my-attempts-page__export svg {
+    color: var(--color-primary-400);
+}
+
+.my-attempts-page__export:hover {
+    border-color: rgb(139 92 246 / 28%);
+    background: rgb(124 58 237 / 7%);
+    color: var(--color-primary-400);
+    transform: translateY(-1px);
+}
+
+.my-attempts-page__export:focus-visible {
+    outline: none;
+    border-color: var(--color-primary-400);
+    box-shadow: 0 0 0 3px rgb(139 92 246 / 12%);
+}
+
+
+/* =========================================================
+   FILTER TOOLBAR
+   ========================================================= */
+
+.my-attempts-filters {
+    display: grid;
+
+    grid-template-columns:
+        minmax(250px, 1fr) minmax(145px, 0.48fr) minmax(130px, 0.42fr) minmax(170px, 0.55fr) minmax(170px, 0.55fr) auto;
+
+    align-items: center;
+    gap: 10px;
+
+    width: 100%;
+    margin-bottom: 28px;
+}
+
+
+/* =========================================================
+   SEARCH
+   ========================================================= */
+
+.my-attempts-filters__search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    min-width: 0;
+    height: 44px;
+    padding: 0 14px;
+
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+
+    background: var(--color-surface);
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.my-attempts-filters__search:hover {
+    border-color: rgb(139 92 246 / 22%);
+}
+
+.my-attempts-filters__search:focus-within {
+    border-color: var(--color-primary-400);
+    box-shadow: 0 0 0 3px rgb(139 92 246 / 10%);
+}
+
+.my-attempts-filters__search svg {
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+}
+
+.my-attempts-filters__search:focus-within svg {
+    color: var(--color-primary-400);
+}
+
+.my-attempts-filters__search input {
+    width: 100%;
+    min-width: 0;
+
+    padding: 0;
+    border: 0;
+    outline: 0;
+
+    background: transparent;
+    color: var(--color-text-primary);
+
+    font: inherit;
+    font-size: 0.88rem;
+}
+
+.my-attempts-filters__search input::placeholder {
+    color: var(--color-text-secondary);
+}
+
+
+/* =========================================================
+   SELECT FILTERS
+   ========================================================= */
+
+.my-attempts-filters__control {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+
+    padding: 0 34px 0 13px;
+
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+    outline: none;
+
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+
+    font: inherit;
+    font-size: 0.84rem;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.my-attempts-filters__control:hover {
+    border-color: rgb(139 92 246 / 22%);
+}
+
+.my-attempts-filters__control:focus {
+    border-color: var(--color-primary-400);
+    box-shadow: 0 0 0 3px rgb(139 92 246 / 10%);
+}
+
+
+/* =========================================================
+   DATE FILTERS
+   ========================================================= */
+
+.my-attempts-filters__date {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    min-width: 0;
+    height: 44px;
+    padding: 0 11px;
+
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 12px;
+
+    background: var(--color-surface);
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.my-attempts-filters__date:hover {
+    border-color: rgb(139 92 246 / 22%);
+}
+
+.my-attempts-filters__date:focus-within {
+    border-color: var(--color-primary-400);
+    box-shadow: 0 0 0 3px rgb(139 92 246 / 10%);
+}
+
+.my-attempts-filters__date span {
+    flex-shrink: 0;
+
+    color: var(--color-text-secondary);
+
+    font-size: 0.72rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.my-attempts-filters__date input {
+    width: 100%;
+    min-width: 0;
+
+    padding: 0;
+    border: 0;
+    outline: 0;
+
+    background: transparent;
+    color: var(--color-text-primary);
+
+    font: inherit;
+    font-size: 0.78rem;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   CLEAR FILTERS
+   ========================================================= */
+
+.my-attempts-filters__clear {
+    flex-shrink: 0;
+
+    height: 44px;
+    padding: 0 13px;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: transparent;
+    color: var(--color-primary-400);
+
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.my-attempts-filters__clear:hover {
+    background: rgb(124 58 237 / 8%);
+}
+
+
+/* =========================================================
+   RESULTS HEADER
+   ========================================================= */
+
+.my-attempts-results {
+    width: 100%;
+}
+
+.my-attempts-results__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    margin-bottom: 14px;
+}
+
+.my-attempts-results__heading h2 {
+    margin: 0;
+
+    color: var(--color-text-primary);
+
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+.my-attempts-results__heading>span {
+    color: var(--color-text-secondary);
+
+    font-size: 0.79rem;
+    font-weight: 550;
+}
+
+
+/* =========================================================
+   ATTEMPT LIST
+   ========================================================= */
+
+.my-attempts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+
+/* =========================================================
+   ATTEMPT CARD
+   ========================================================= */
+
+.my-attempt-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+
+    width: 100%;
+    min-height: 92px;
+
+    padding: 18px 20px;
+
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 16px;
+
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+
+    font: inherit;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+}
+
+.my-attempt-card:hover {
+    border-color: rgb(139 92 246 / 28%);
+
+    background: rgb(124 58 237 / 5%);
+
+    box-shadow:
+        0 8px 28px rgb(0 0 0 / 8%);
+
+    transform: translateY(-1px);
+}
+
+.my-attempt-card:focus-visible {
+    outline: none;
+
+    border-color: var(--color-primary-400);
+
+    box-shadow:
+        0 0 0 3px rgb(139 92 246 / 12%);
+}
+
+
+/* =========================================================
+   ATTEMPT INFORMATION
+   ========================================================= */
+
+.my-attempt-card__main {
+    flex: 1;
+    min-width: 0;
+}
+
+.my-attempt-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    min-width: 0;
+}
+
+.my-attempt-card__title-row h3 {
+    min-width: 0;
+    margin: 0;
+
+    overflow: hidden;
+
+    color: var(--color-text-primary);
+
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   CATEGORY BADGE
+   ========================================================= */
+
+.my-attempt-card__category {
+    flex-shrink: 0;
+
+    padding: 4px 9px;
+
+    border: 1px solid rgb(139 92 246 / 16%);
+    border-radius: 999px;
+
+    background: rgb(124 58 237 / 8%);
+    color: var(--color-primary-400);
+
+    font-size: 0.69rem;
+    font-weight: 650;
+    line-height: 1.2;
+}
+
+
+/* =========================================================
+   COMPLETED DATE
+   ========================================================= */
+
+.my-attempt-card__date {
+    margin: 7px 0 0;
+
+    color: var(--color-text-secondary);
+
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+
+.my-attempt-card__meta-separator {
+    margin: 0 7px;
+
+    color: var(--color-text-secondary);
+}
+
+.my-attempt-card__attempt-count {
+    color: var(--color-text-secondary);
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   SCORE
+   ========================================================= */
+
+.my-attempt-card__score {
+    display: flex;
+    flex: 0 0 118px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.my-attempt-card__score strong {
+    color: var(--color-primary-400);
+
+    font-size: 1.12rem;
+    font-weight: 750;
+    line-height: 1.15;
+}
+
+.my-attempt-card__score span {
+    color: var(--color-text-secondary);
+
+    font-size: 0.71rem;
+    font-weight: 500;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.my-attempts-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 230px;
+    padding: 44px 24px;
+
+    border: 1px dashed var(--color-border-subtle);
+    border-radius: 18px;
+
+    background: var(--color-surface);
+
+    text-align: center;
+}
+
+.my-attempts-empty h3 {
+    margin: 0;
+
+    color: var(--color-text-primary);
+
+    font-size: 0.96rem;
+    font-weight: 700;
+}
+
+.my-attempts-empty p {
+    max-width: 380px;
+    margin: 8px auto 0;
+
+    color: var(--color-text-secondary);
+
+    font-size: 0.83rem;
+    line-height: 1.55;
+}
+
+
+/* =========================================================
+   LOADING / ERROR TEXT
+   ========================================================= */
+
+.my-attempts-page__container>p {
+    margin: 24px 0;
+
+    color: var(--color-text-secondary);
+
+    font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1180px) {
+    .my-attempts-page {
+        padding: 32px 24px 64px;
+    }
+
+    .my-attempts-filters {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .my-attempts-filters__search {
+        grid-column: 1 / -1;
+    }
+
+    .my-attempts-filters__clear {
+        justify-self: start;
+    }
+}
+
+
+/* =========================================================
+   SMALL TABLET
+   ========================================================= */
+
+@media (max-width: 820px) {
+    .my-attempts-page {
+        padding: 28px 20px 60px;
+    }
+
+    .my-attempts-page__header {
+        margin-bottom: 26px;
+    }
+
+    .my-attempt-card {
+        min-height: 88px;
+        padding: 16px 18px;
+    }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 640px) {
+    .my-attempts-page {
+        padding: 24px 16px 56px;
+    }
+
+    .my-attempts-page__header {
+        flex-direction: column;
+        align-items: stretch;
+
+        gap: 18px;
+        margin-bottom: 24px;
+    }
+
+    .my-attempts-page__header h1 {
+        font-size: 1.75rem;
+    }
+
+    .my-attempts-page__header p {
+        font-size: 0.88rem;
+    }
+
+    .my-attempts-page__export {
+        align-self: flex-start;
+    }
+
+
+    /* Filters */
+
+    .my-attempts-filters {
+        grid-template-columns: 1fr;
+        gap: 9px;
+
+        margin-bottom: 24px;
+    }
+
+    .my-attempts-filters__search {
+        grid-column: auto;
+    }
+
+    .my-attempts-filters__control,
+    .my-attempts-filters__date {
+        width: 100%;
+    }
+
+    .my-attempts-filters__clear {
+        width: 100%;
+
+        border: 1px solid var(--color-border-subtle);
+
+        background: var(--color-surface);
+    }
+
+    .my-attempts-filters__clear:hover {
+        border-color: rgb(139 92 246 / 22%);
+        background: rgb(124 58 237 / 7%);
+    }
+
+
+    /* Results */
+
+    .my-attempts-results__heading {
+        margin-bottom: 12px;
+    }
+
+
+    /* Cards */
+
+    .my-attempt-card {
+        align-items: flex-start;
+
+        gap: 14px;
+
+        min-height: 0;
+        padding: 15px;
+
+        border-radius: 14px;
+    }
+
+    .my-attempt-card__title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .my-attempt-card__title-row h3 {
+        width: 100%;
+
+        overflow: visible;
+
+        white-space: normal;
+        text-overflow: initial;
+    }
+
+    .my-attempt-card__score {
+        flex-basis: auto;
+        min-width: 52px;
+    }
+
+    .my-attempt-card__score strong {
+        font-size: 1rem;
+    }
+
+    .my-attempt-card__score span {
+        display: none;
+    }
+
+    .my-attempt-card__date {
+        margin-top: 8px;
+
+        font-size: 0.74rem;
+    }
+}
+
+
+/* =========================================================
+   INFINITE SCROLL
+   ========================================================= */
+
+.my-attempts-load-more {
+    width: 100%;
+    height: 2px;
+}
+
+.my-attempts-loading-more {
+    padding: 18px 0 4px;
+
+    color: var(--color-text-secondary);
+
+    font-size: 0.8rem;
+    font-weight: 550;
+    text-align: center;
+}
+
+
+/* =========================================================
+   CARD ENTRANCE ANIMATION
+   ========================================================= */
+
+.my-attempt-card--enter {
+    opacity: 0;
+
+    animation:
+        my-attempt-card-enter 0.38s ease forwards;
+}
+
+@keyframes my-attempt-card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .my-attempt-card--enter {
+        opacity: 1;
+        animation: none;
+    }
+
+    .my-attempt-card {
+        transition: none;
+    }
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 420px) {
+    .my-attempts-page {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .my-attempt-card {
+        gap: 10px;
+        padding: 14px;
+    }
+
+    .my-attempt-card__category {
+        padding: 3px 7px;
+
+        font-size: 0.65rem;
+    }
+}

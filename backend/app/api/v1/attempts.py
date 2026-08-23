@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
+from datetime import date, datetime, time, timedelta
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
@@ -19,6 +20,8 @@ from app.schemas.quiz_attempt import (
     QuizAttemptResultResponse,
     QuizAttemptSubmit,
     QuizAttemptResultChoice,
+    UserAttemptQuizItem,
+    UserAttemptQuizPage,
 )
 from app.services.quiz_grading import grade_attempt_answer
 from app.models.audit_log import AuditLog
@@ -28,6 +31,226 @@ router = APIRouter(
     prefix="/quizzes",
     tags=["Quiz Attempts"],
 )
+
+user_attempts_router = APIRouter(
+    prefix="/attempts",
+    tags=["Quiz Attempts"],
+)
+
+
+@user_attempts_router.get(
+    "",
+    response_model=UserAttemptQuizPage,
+)
+def get_current_user_attempts(
+    page: int = 1,
+    page_size: int = 10,
+    search: str | None = None,
+    category: str | None = None,
+    score_range: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserAttemptQuizPage:
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), 100)
+
+    if (
+        date_from is not None
+        and date_to is not None
+        and date_from > date_to
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="date_from cannot be later than date_to",
+        )
+
+    allowed_score_ranges = {
+        "90-100",
+        "80-89",
+        "70-79",
+        "below-70",
+    }
+
+    if (
+        score_range is not None
+        and score_range not in allowed_score_ranges
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid score range",
+        )
+
+    filters = [
+        QuizAttempt.user_id == current_user.id,
+    ]
+
+    if search is not None and search.strip():
+        filters.append(
+            Quiz.title.ilike(
+                f"%{search.strip()}%"
+            )
+        )
+
+    if category is not None and category.strip():
+        filters.append(
+            Quiz.category.ilike(category.strip())
+        )
+
+    if date_from is not None:
+        filters.append(
+            QuizAttempt.submitted_at >= datetime.combine(
+                date_from,
+                time.min,
+            )
+        )
+
+    if date_to is not None:
+        filters.append(
+            QuizAttempt.submitted_at < datetime.combine(
+                date_to + timedelta(days=1),
+                time.min,
+            )
+        )
+
+    attempts = db.scalars(
+        select(QuizAttempt)
+        .options(
+            selectinload(QuizAttempt.quiz),
+            selectinload(QuizAttempt.answers)
+            .selectinload(QuizAttemptAnswer.question)
+            .selectinload(Question.answer_choices),
+            selectinload(QuizAttempt.answers)
+            .selectinload(QuizAttemptAnswer.selected_choice),
+        )
+        .join(
+            Quiz,
+            Quiz.id == QuizAttempt.quiz_id,
+        )
+        .where(*filters)
+        .order_by(
+            QuizAttempt.submitted_at.desc(),
+            QuizAttempt.id.desc(),
+        )
+    ).all()
+
+    quiz_history: dict[uuid.UUID, UserAttemptQuizItem] = {}
+    quiz_score_totals: dict[uuid.UUID, float] = {}
+    quiz_graded_attempt_counts: dict[uuid.UUID, int] = {}
+
+    for attempt in attempts:
+        score = 0
+        gradable_questions = 0
+
+        for answer in attempt.answers:
+            is_correct = grade_attempt_answer(
+                answer.question,
+                answer,
+            )
+
+            if is_correct is not None:
+                gradable_questions += 1
+
+                if is_correct:
+                    score += 1
+
+        score_percentage = (
+            (score / gradable_questions) * 100
+            if gradable_questions > 0
+            else None
+        )
+
+        if score_range:
+            if score_percentage is None:
+                continue
+
+            if (
+                score_range == "90-100"
+                and not 90 <= score_percentage <= 100
+            ):
+                continue
+
+            if (
+                score_range == "80-89"
+                and not 80 <= score_percentage < 90
+            ):
+                continue
+
+            if (
+                score_range == "70-79"
+                and not 70 <= score_percentage < 80
+            ):
+                continue
+
+            if (
+                score_range == "below-70"
+                and not score_percentage < 70
+            ):
+                continue
+
+        existing_quiz = quiz_history.get(attempt.quiz_id)
+
+        if existing_quiz is None:
+            quiz_history[attempt.quiz_id] = UserAttemptQuizItem(
+                quiz_id=attempt.quiz_id,
+                quiz_title=attempt.quiz.title,
+                quiz_category=attempt.quiz.category,
+                latest_attempt_id=attempt.id,
+                average_score=None,
+                latest_submitted_at=attempt.submitted_at,
+                latest_score=score,
+                latest_gradable_questions=gradable_questions,
+                latest_total_questions=len(attempt.answers),
+                attempt_count=1,
+            )
+        else:
+            existing_quiz.attempt_count += 1
+
+        if score_percentage is not None:
+            quiz_score_totals[attempt.quiz_id] = (
+                quiz_score_totals.get(attempt.quiz_id, 0.0)
+                + score_percentage
+            )
+            quiz_graded_attempt_counts[attempt.quiz_id] = (
+                quiz_graded_attempt_counts.get(attempt.quiz_id, 0)
+                + 1
+            )
+
+    for quiz_id, quiz_item in quiz_history.items():
+        graded_attempt_count = quiz_graded_attempt_counts.get(
+            quiz_id,
+            0,
+        )
+
+        if graded_attempt_count > 0:
+            quiz_item.average_score = round(
+                quiz_score_totals[quiz_id] / graded_attempt_count,
+                2,
+            )
+
+    quizzes = list(quiz_history.values())
+
+    total = len(quizzes)
+
+    total_pages = (
+        (total + page_size - 1) // page_size
+        if total > 0
+        else 0
+    )
+
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    paginated_quizzes = quizzes[start:end]
+
+    return UserAttemptQuizPage(
+        quizzes=paginated_quizzes,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
 
 
 @router.post(
