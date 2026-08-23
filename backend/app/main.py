@@ -10,6 +10,7 @@ from app.api.v1.attempts import (
 from app.api.v1.users import router as users_router
 from app.core.config import settings
 from app.api.v1.audit_logs import router as audit_logs_router
+from app.api.v1.dashboard import router as dashboard_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -38,7 +39,10 @@ app.include_router(
     users_router,
     prefix="/api/v1",
 )
-
+app.include_router(
+    dashboard_router,
+    prefix="/api/v1",
+)
 app.include_router(
     attempts_router,
     prefix="/api/v1",
