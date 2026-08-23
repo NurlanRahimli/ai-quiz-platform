@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
 import Swal from "sweetalert2"
@@ -32,6 +32,15 @@ type Quiz = {
   updated_at: string
 }
 
+type QuizPageResponse = {
+  quizzes: Quiz[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+
 function formatMemberDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     month: "long",
@@ -52,14 +61,34 @@ function ProfilePage() {
   const { user, refreshUser } = useAuth()
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
+  const [quizTotal, setQuizTotal] = useState(0)
+  const [quizPage, setQuizPage] = useState(1)
+  const [quizTotalPages, setQuizTotalPages] = useState(0)
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [quizError, setQuizError] = useState("")
+
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const isLoadingMoreRef = useRef(false)
 
   useEffect(() => {
     const loadQuizzes = async () => {
       try {
-        const response = await apiClient.get<Quiz[]>("/quizzes")
-        setQuizzes(response.data)
+        const response = await apiClient.get<QuizPageResponse>(
+          "/users/me/quizzes",
+          {
+            params: {
+              page: 1,
+              page_size: 10,
+            },
+          },
+        )
+
+        setQuizzes(response.data.quizzes)
+        setQuizTotal(response.data.total)
+        setQuizPage(response.data.page)
+        setQuizTotalPages(response.data.total_pages)
+        setQuizError("")
       } catch {
         setQuizError("Unable to load your quizzes.")
       } finally {
@@ -69,6 +98,91 @@ function ProfilePage() {
 
     void loadQuizzes()
   }, [])
+
+
+  const loadMoreQuizzes = useCallback(async () => {
+    if (
+      isLoadingMoreRef.current ||
+      quizPage >= quizTotalPages
+    ) {
+      return
+    }
+
+    isLoadingMoreRef.current = true
+    setIsLoadingMore(true)
+
+    try {
+      const nextPage = quizPage + 1
+
+      const response = await apiClient.get<QuizPageResponse>(
+        "/users/me/quizzes",
+        {
+          params: {
+            page: nextPage,
+            page_size: 10,
+          },
+        },
+      )
+
+      setQuizzes((currentQuizzes) => {
+        const existingIds = new Set(
+          currentQuizzes.map((quiz) => quiz.id),
+        )
+
+        const newQuizzes = response.data.quizzes.filter(
+          (quiz) => !existingIds.has(quiz.id),
+        )
+
+        return [
+          ...currentQuizzes,
+          ...newQuizzes,
+        ]
+      })
+
+      setQuizTotal(response.data.total)
+      setQuizPage(response.data.page)
+      setQuizTotalPages(response.data.total_pages)
+    } catch {
+      // Keep all quizzes that have already loaded visible.
+    } finally {
+      isLoadingMoreRef.current = false
+      setIsLoadingMore(false)
+    }
+  }, [quizPage, quizTotalPages])
+
+
+  useEffect(() => {
+    const target = loadMoreRef.current
+
+    if (
+      !target ||
+      quizPage >= quizTotalPages
+    ) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+
+        if (entry.isIntersecting) {
+          void loadMoreQuizzes()
+        }
+      },
+      {
+        root: null,
+        rootMargin: "300px 0px",
+        threshold: 0,
+      },
+    )
+
+    observer.observe(target)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [loadMoreQuizzes, quizPage, quizTotalPages])
+
 
   const handleEditProfile = async () => {
     if (!user) {
@@ -215,9 +329,9 @@ function ProfilePage() {
             </Button>
 
             <div className="profile-stat">
-              <strong>{quizzes.length}</strong>
+              <strong>{quizTotal}</strong>
               <span>
-                {quizzes.length === 1
+                {quizTotal === 1
                   ? "Quiz Created"
                   : "Quizzes Created"}
               </span>
@@ -231,7 +345,7 @@ function ProfilePage() {
               <Grid3X3 size={18} aria-hidden="true" />
               <h2>My Quizzes</h2>
               {!isLoadingQuizzes && (
-                <span>{quizzes.length}</span>
+                <span>{quizTotal}</span>
               )}
             </div>
 
@@ -289,100 +403,121 @@ function ProfilePage() {
               </Button>
             </div>
           ) : (
-            <div className="profile-quiz-grid">
-              {quizzes.map((quiz, index) => (
-                <article
-                  key={quiz.id}
-                  className="profile-quiz-card"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() =>
-                    navigate(`/quizzes/${quiz.id}`)
-                  }
-                  onKeyDown={(event) => {
-                    if (
-                      event.key === "Enter" ||
-                      event.key === " "
-                    ) {
-                      event.preventDefault()
+            <>
+              <div className="profile-quiz-grid">
+                {quizzes.map((quiz, index) => (
+                  <article
+                    key={quiz.id}
+                    className="profile-quiz-card"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
                       navigate(`/quizzes/${quiz.id}`)
                     }
-                  }}
-                >
-                  <div className="profile-quiz-card__visual">
-                    <div className="profile-quiz-card__number">
-                      {String(index + 1).padStart(2, "0")}
-                    </div>
-
-                    <div className="profile-quiz-card__icon">
-                      <FileQuestion
-                        size={23}
-                        aria-hidden="true"
-                      />
-                    </div>
-
-                    <span
-                      className={`profile-quiz-card__visibility profile-quiz-card__visibility--${quiz.visibility}`}
-                    >
-                      {quiz.visibility === "public" ? "Public" : "Unlisted"}
-                    </span>
-                  </div>
-
-                  <div className="profile-quiz-card__body">
-                    {quiz.category && (
-                      <span className="profile-quiz-card__category">
-                        {quiz.category}
-                      </span>
-                    )}
-
-                    <h3>{quiz.title}</h3>
-
-                    <p>
-                      {quiz.description ||
-                        "No description has been added yet."}
-                    </p>
-
-                    {quiz.tags.length > 0 && (
-                      <div
-                        className="profile-quiz-card__tags"
-                        aria-label="Quiz tags"
-                      >
-                        {quiz.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="profile-quiz-card__tag"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" ||
+                        event.key === " "
+                      ) {
+                        event.preventDefault()
+                        navigate(`/quizzes/${quiz.id}`)
+                      }
+                    }}
+                  >
+                    <div className="profile-quiz-card__visual">
+                      <div className="profile-quiz-card__number">
+                        {String(index + 1).padStart(2, "0")}
                       </div>
-                    )}
 
-                    <div className="profile-quiz-card__creator">
-                      <CircleUserRound
-                        size={15}
-                        strokeWidth={2}
-                        aria-hidden="true"
-                      />
-                      <span>By {quiz.creator_name}</span>
-                    </div>
-
-                    <div className="profile-quiz-card__footer">
-                      <span>
-                        Updated {formatQuizDate(quiz.updated_at)}
-                      </span>
+                      <div className="profile-quiz-card__icon">
+                        <FileQuestion
+                          size={23}
+                          aria-hidden="true"
+                        />
+                      </div>
 
                       <span
-                        className="profile-quiz-card__open"
-                        aria-hidden="true"
+                        className={`profile-quiz-card__visibility profile-quiz-card__visibility--${quiz.visibility}`}
                       >
-                        <ArrowRight size={16} />
+                        {quiz.visibility === "public" ? "Public" : "Unlisted"}
                       </span>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+
+                    <div className="profile-quiz-card__body">
+                      {quiz.category && (
+                        <span className="profile-quiz-card__category">
+                          {quiz.category}
+                        </span>
+                      )}
+
+                      <h3>{quiz.title}</h3>
+
+                      <p>
+                        {quiz.description ||
+                          "No description has been added yet."}
+                      </p>
+
+                      {quiz.tags.length > 0 && (
+                        <div
+                          className="profile-quiz-card__tags"
+                          aria-label="Quiz tags"
+                        >
+                          {quiz.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="profile-quiz-card__tag"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="profile-quiz-card__creator">
+                        <CircleUserRound
+                          size={15}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        />
+                        <span>By {quiz.creator_name}</span>
+                      </div>
+
+                      <div className="profile-quiz-card__footer">
+                        <span>
+                          Updated {formatQuizDate(quiz.updated_at)}
+                        </span>
+
+                        <span
+                          className="profile-quiz-card__open"
+                          aria-hidden="true"
+                        >
+                          <ArrowRight size={16} />
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              {quizPage < quizTotalPages && (
+                <div
+                  ref={loadMoreRef}
+                  className="profile-load-more"
+                  aria-live="polite"
+                >
+                  {isLoadingMore && (
+                    <>
+                      <span
+                        className="profile-load-more__spinner"
+                        aria-hidden="true"
+                      />
+
+                      <span>Loading more quizzes...</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
       </div>
