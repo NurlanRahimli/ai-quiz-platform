@@ -1,7 +1,19 @@
-import { useEffect, useState } from "react"
-import axios from "axios"
+import {
+  useEffect,
+  useState,
+  useRef,
+} from "react"
 import { useNavigate, useParams } from "react-router-dom"
+
+import axios from "axios"
 import apiClient from "../../api/client"
+
+import {
+  ArrowLeft,
+  ArrowRight,
+  RotateCcw,
+} from "lucide-react";
+
 import "../../styles/pages/quizzes/QuizAttemptHistoryPage.css"
 
 type Quiz = {
@@ -25,6 +37,11 @@ function QuizAttemptHistoryPage() {
   const [attempts, setAttempts] = useState<AttemptHistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [visibleCount, setVisibleCount] = useState(10)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  const visibleAttempts = attempts.slice(0, visibleCount)
+  const hasMoreAttempts = visibleCount < attempts.length
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -61,6 +78,37 @@ function QuizAttemptHistoryPage() {
     void loadHistory()
   }, [quizId])
 
+
+  useEffect(() => {
+    const target = loadMoreRef.current
+
+    if (!target || !hasMoreAttempts) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0]
+
+        if (firstEntry?.isIntersecting) {
+          setVisibleCount((current) =>
+            Math.min(current + 10, attempts.length),
+          )
+        }
+      },
+      {
+        rootMargin: "180px 0px",
+      },
+    )
+
+    observer.observe(target)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasMoreAttempts, attempts.length])
+
+
   if (isLoading) {
     return (
       <main className="attempt-history-page">
@@ -83,30 +131,28 @@ function QuizAttemptHistoryPage() {
         <button
           className="history-back-button"
           type="button"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/attempts")}
         >
-          ← Back to dashboard
+          <ArrowLeft
+            size={17}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+          Back to attempts
         </button>
 
         <header className="attempt-history-header">
-          <p className="history-eyebrow">Quiz history</p>
+          <div className="attempt-history-header__content">
+            <p className="history-eyebrow">
+              Attempt History
+            </p>
 
-          <h1>{quiz.title}</h1>
+            <h1>{quiz.title}</h1>
 
-          <p className="history-description">
-            Review your previous attempts and open any submission
-            to see the full results.
-          </p>
-        </header>
-
-        <section className="history-summary">
-          <div>
-            <span className="history-summary-number">
-              {attempts.length}
-            </span>
-            <span className="history-summary-label">
-              {attempts.length === 1 ? "Attempt" : "Attempts"}
-            </span>
+            <p className="history-description">
+              Review your previous attempts and open any submission
+              to see the full results.
+            </p>
           </div>
 
           <button
@@ -114,9 +160,23 @@ function QuizAttemptHistoryPage() {
             className="history-take-button"
             onClick={() => navigate(`/quizzes/${quizId}/take`)}
           >
-            Take quiz again
+            <RotateCcw
+              size={17}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+            Take again
           </button>
-        </section>
+        </header>
+
+        <div className="history-list-heading">
+          <h2>Attempts</h2>
+
+          <span>
+            {attempts.length}{" "}
+            {attempts.length === 1 ? "attempt" : "attempts"}
+          </span>
+        </div>
 
         {attempts.length === 0 ? (
           <section className="history-empty">
@@ -135,20 +195,23 @@ function QuizAttemptHistoryPage() {
           </section>
         ) : (
           <section className="history-list">
-            {attempts.map((attempt, index) => {
+            {visibleAttempts.map((attempt, index) => {
               const percentage =
                 attempt.gradable_questions === 0
                   ? null
                   : Math.round(
-                      (attempt.score /
-                        attempt.gradable_questions) *
-                        100,
-                    )
+                    (attempt.score /
+                      attempt.gradable_questions) *
+                    100,
+                  )
 
               return (
                 <article
-                  className="history-card"
+                  className="history-card history-card--enter"
                   key={attempt.attempt_id}
+                  style={{
+                    animationDelay: `${(index % 10) * 35}ms`,
+                  }}
                 >
                   <div className="history-card-main">
                     <div className="history-attempt-number">
@@ -180,8 +243,8 @@ function QuizAttemptHistoryPage() {
                       <>
                         <strong>{percentage}%</strong>
                         <span>
-                            {attempt.score} /{" "}
-                            {attempt.gradable_questions} correct
+                          {attempt.score} /{" "}
+                          {attempt.gradable_questions} correct
                         </span>
                       </>
                     )}
@@ -196,11 +259,27 @@ function QuizAttemptHistoryPage() {
                       )
                     }
                   >
-                    View results →
+                    <span>View results</span>
+
+                    <ArrowRight
+                      size={16}
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
                   </button>
                 </article>
               )
             })}
+            {hasMoreAttempts && (
+              <div
+                ref={loadMoreRef}
+                className="history-load-more"
+                aria-hidden="true"
+              >
+                <span />
+                Loading more attempts...
+              </div>
+            )}
           </section>
         )}
       </div>

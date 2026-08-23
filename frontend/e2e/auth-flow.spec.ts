@@ -22,31 +22,31 @@ test("complete authentication flow", async ({ page }) => {
 
   // Login
   await page.getByRole("link", { name: "Log in" }).click()
-  
+
   await expect(page).toHaveURL(/\/login$/)
   await expect(
     page.getByRole("heading", { name: "Welcome back" }),
   ).toBeVisible()
-  
+
   await page.getByLabel("Email").fill(email)
   await page.getByLabel("Password", { exact: true }).fill(password)
-  
+
   const loginRequestPromise = page.waitForRequest(
     (request) =>
       request.url().endsWith("/api/v1/auth/login") &&
       request.method() === "POST",
   )
-  
+
   await page.getByRole("button", { name: "Log in" }).click()
-  
+
   const loginRequest = await loginRequestPromise
   const loginResponse = await loginRequest.response()
-  
+
   expect(loginResponse).not.toBeNull()
   expect(loginResponse!.status()).toBe(200)
-  
+
   const loginBody = await loginResponse!.json()
-  
+
   expect(loginBody.access_token).toBeTruthy()
   expect(loginBody.token_type).toBe("bearer")
 
@@ -57,31 +57,28 @@ test("complete authentication flow", async ({ page }) => {
 
   expect(storedToken).toBe(loginBody.access_token)
 
-  // /auth/me successfully loaded the current user
-  await expect(page.getByText("Login successful.")).toBeVisible()
-
-  // Protected dashboard is accessible
-  await page.goto("/dashboard")
-
+  // Successful login redirects to the protected dashboard
   await expect(page).toHaveURL(/\/dashboard$/)
-  await expect(
-    page.getByRole("heading", { name: `Welcome, ${displayName}` }),
-  ).toBeVisible()
 
   await expect(
-    page.getByText("You're successfully authenticated."),
+    page.getByRole("heading", {
+      name: `Welcome back, ${displayName}.`,
+    }),
   ).toBeVisible()
 
   // Refreshing restores the authenticated session
   await page.reload()
 
   await expect(page).toHaveURL(/\/dashboard$/)
+
   await expect(
-    page.getByRole("heading", { name: `Welcome, ${displayName}` }),
+    page.getByRole("heading", {
+      name: `Welcome back, ${displayName}.`,
+    }),
   ).toBeVisible()
 
   // Logout clears the session
-  await page.getByRole("button", { name: "Log Out" }).click()
+  await page.getByRole("button", { name: "Logout" }).click()
 
   await expect(page).toHaveURL(/\/login$/)
 

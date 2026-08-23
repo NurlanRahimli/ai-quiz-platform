@@ -64,3 +64,24 @@ class QuizAttemptHistoryItem(BaseModel):
     score: int
     gradable_questions: int
     total_questions: int
+
+
+class UserAttemptQuizItem(BaseModel):
+    quiz_id: uuid.UUID
+    quiz_title: str
+    quiz_category: str | None
+    latest_attempt_id: uuid.UUID
+    latest_submitted_at: datetime
+    latest_score: int
+    latest_gradable_questions: int
+    latest_total_questions: int
+    attempt_count: int
+    average_score: float | None
+
+
+class UserAttemptQuizPage(BaseModel):
+    quizzes: list[UserAttemptQuizItem]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
