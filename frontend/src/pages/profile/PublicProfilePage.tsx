@@ -8,14 +8,17 @@ import {
     ArrowLeft,
     ArrowRight,
     CalendarDays,
+    Check,
     CircleUserRound,
     FileQuestion,
     Grid3X3,
     Sparkles,
+    UserPlus,
     Users,
 } from "lucide-react"
 
 import apiClient from "../../api/client"
+import { useAuth } from "../../auth/useAuth"
 
 import "../../styles/pages/profile/PublicProfilePage.css"
 
@@ -39,6 +42,9 @@ type PublicProfile = {
     display_name: string
     created_at: string
     public_quiz_count: number
+    is_following: boolean
+    follower_count: number
+    following_count: number
     quizzes: PublicQuiz[]
     page: number
     page_size: number
@@ -63,8 +69,10 @@ function formatQuizDate(value: string) {
 function PublicProfilePage() {
     const navigate = useNavigate()
     const { userId } = useParams()
+    const { user } = useAuth()
 
     const [profile, setProfile] = useState<PublicProfile | null>(null)
+    const [isFollowLoading, setIsFollowLoading] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState("")
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -196,6 +204,54 @@ function PublicProfilePage() {
         }
     }, [profile, loadMoreQuizzes])
 
+
+    const handleFollowToggle = async () => {
+        if (!profile || isFollowLoading || user?.id === profile.id) {
+            return
+        }
+
+        setIsFollowLoading(true)
+
+        try {
+            const response = profile.is_following
+                ? await apiClient.delete<{
+                    user_id: string
+                    is_following: boolean
+                }>(`/users/${profile.id}/follow`)
+                : await apiClient.post<{
+                    user_id: string
+                    is_following: boolean
+                }>(`/users/${profile.id}/follow`)
+
+            setProfile((currentProfile) => {
+                if (!currentProfile) {
+                    return currentProfile
+                }
+
+                const wasFollowing = currentProfile.is_following
+                const isFollowing = response.data.is_following
+
+                return {
+                    ...currentProfile,
+                    is_following: isFollowing,
+                    follower_count:
+                        wasFollowing === isFollowing
+                            ? currentProfile.follower_count
+                            : Math.max(
+                                0,
+                                currentProfile.follower_count +
+                                (isFollowing ? 1 : -1),
+                            ),
+                }
+            })
+        } catch {
+            // Keep the existing follow state if the request fails.
+        } finally {
+            setIsFollowLoading(false)
+        }
+    }
+
+
     if (isLoading) {
         return (
             <div className="public-profile-page">
@@ -299,13 +355,56 @@ function PublicProfilePage() {
                         </div>
                     </div>
 
-                    <div className="public-profile-stat">
-                        <strong>{profile.public_quiz_count}</strong>
-                        <span>
-                            {profile.public_quiz_count === 1
-                                ? "Public Quiz"
-                                : "Public Quizzes"}
-                        </span>
+                    <div className="public-profile-hero__actions">
+                        {user?.id !== profile.id && (
+                            <button
+                                type="button"
+                                className={`public-profile-follow${profile.is_following
+                                    ? " public-profile-follow--following"
+                                    : ""
+                                    }`}
+                                onClick={() => void handleFollowToggle()}
+                                disabled={isFollowLoading}
+                                aria-pressed={profile.is_following}
+                            >
+                                {profile.is_following ? (
+                                    <Check size={16} aria-hidden="true" />
+                                ) : (
+                                    <UserPlus size={16} aria-hidden="true" />
+                                )}
+
+                                {isFollowLoading
+                                    ? "Updating..."
+                                    : profile.is_following
+                                        ? "Following"
+                                        : "Follow"}
+                            </button>
+                        )}
+
+                        <div className="public-profile-stats">
+                            <div className="public-profile-stat">
+                                <strong>{profile.public_quiz_count}</strong>
+                                <span>
+                                    {profile.public_quiz_count === 1
+                                        ? "Public Quiz"
+                                        : "Public Quizzes"}
+                                </span>
+                            </div>
+
+                            <div className="public-profile-stat">
+                                <strong>{profile.follower_count}</strong>
+                                <span>
+                                    {profile.follower_count === 1
+                                        ? "Follower"
+                                        : "Followers"}
+                                </span>
+                            </div>
+
+                            <div className="public-profile-stat">
+                                <strong>{profile.following_count}</strong>
+                                <span>Following</span>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

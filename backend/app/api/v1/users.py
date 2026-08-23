@@ -10,12 +10,14 @@ from app.models.question import Question
 from app.models.quiz import Quiz
 from app.models.quiz_attempt import QuizAttempt
 from app.models.user import User
+from app.models.user_follow import UserFollow
 from app.schemas.quiz import (
     QuizDiscoveryResponse,
     QuizListResponse,
 )
 from app.schemas.user import (
     PublicUserProfileResponse,
+    UserFollowResponse,
     UserQuizPageResponse,
 )
 
@@ -81,6 +83,102 @@ def get_current_user_quizzes(
     )
 
 
+@router.post(
+    "/{user_id}/follow",
+    response_model=UserFollowResponse,
+    status_code=status.HTTP_200_OK,
+)
+def follow_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserFollowResponse:
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot follow yourself",
+        )
+
+    user = db.scalar(
+        select(User).where(
+            User.id == user_id,
+            User.is_active.is_(True),
+        )
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    existing_follow = db.scalar(
+        select(UserFollow).where(
+            UserFollow.follower_id == current_user.id,
+            UserFollow.following_id == user.id,
+        )
+    )
+
+    if existing_follow is None:
+        follow = UserFollow(
+            follower_id=current_user.id,
+            following_id=user.id,
+        )
+        db.add(follow)
+        db.commit()
+
+    return UserFollowResponse(
+        user_id=user.id,
+        is_following=True,
+    )
+
+
+@router.delete(
+    "/{user_id}/follow",
+    response_model=UserFollowResponse,
+    status_code=status.HTTP_200_OK,
+)
+def unfollow_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserFollowResponse:
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot unfollow yourself",
+        )
+
+    user = db.scalar(
+        select(User).where(
+            User.id == user_id,
+            User.is_active.is_(True),
+        )
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    existing_follow = db.scalar(
+        select(UserFollow).where(
+            UserFollow.follower_id == current_user.id,
+            UserFollow.following_id == user.id,
+        )
+    )
+
+    if existing_follow is not None:
+        db.delete(existing_follow)
+        db.commit()
+
+    return UserFollowResponse(
+        user_id=user.id,
+        is_following=False,
+    )
+
+
 @router.get(
     "/{user_id}/profile",
     response_model=PublicUserProfileResponse,
@@ -104,6 +202,27 @@ def get_public_user_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
+
+    is_following = db.scalar(
+        select(UserFollow).where(
+            UserFollow.follower_id == current_user.id,
+            UserFollow.following_id == user.id,
+        )
+    ) is not None
+
+
+    follower_count = db.scalar(
+        select(func.count()).select_from(UserFollow).where(
+            UserFollow.following_id == user.id,
+        )
+    ) or 0
+
+    following_count = db.scalar(
+        select(func.count()).select_from(UserFollow).where(
+            UserFollow.follower_id == user.id,
+        )
+    ) or 0
+
 
     public_quiz_count = db.scalar(
         select(func.count(Quiz.id)).where(
@@ -165,6 +284,9 @@ def get_public_user_profile(
         display_name=user.display_name,
         created_at=user.created_at,
         public_quiz_count=public_quiz_count,
+        follower_count=follower_count,
+        following_count=following_count,
+        is_following=is_following,
         quizzes=quizzes,
         page=page,
         page_size=page_size,

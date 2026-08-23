@@ -61,6 +61,9 @@ class PublicUserProfileResponse(BaseModel):
     display_name: str
     created_at: datetime
     public_quiz_count: int
+    follower_count: int
+    following_count: int
+    is_following: bool
     quizzes: list[QuizDiscoveryResponse]
     page: int
     page_size: int
@@ -73,6 +76,11 @@ class UserQuizPageResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+class UserFollowResponse(BaseModel):
+    user_id: uuid.UUID
+    is_following: bool
 
 
 class UserLogin(BaseModel):
