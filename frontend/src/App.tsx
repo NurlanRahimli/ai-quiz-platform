@@ -15,6 +15,7 @@ import QuizDetailsPage from "./pages/quizzes/QuizDetailsPage";
 import ProfilePage from "./pages/profile/ProfilePage";
 import DiscoverQuizzesPage from "./pages/quizzes/DiscoverQuizzesPage";
 import SearchQuizzesPage from "./pages/quizzes/SearchQuizzesPage";
+import PublicProfilePage from "./pages/profile/PublicProfilePage"
 
 function ProtectedAppLayout() {
   return (
@@ -38,6 +39,10 @@ function ProtectedAppLayout() {
         <Route
           path="/discover/search"
           element={<SearchQuizzesPage />}
+        />
+        <Route
+          path="/users/:userId"
+          element={<PublicProfilePage />}
         />
       </Routes>
     </AppShell>

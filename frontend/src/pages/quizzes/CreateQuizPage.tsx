@@ -1159,7 +1159,7 @@ function CreateQuizPage() {
               <div>
                 <strong>Build your quiz</strong>
                 <p>
-                  Add as many questions as you need, then create the quiz
+                  You can add up to 30 questions, then create the quiz
                   when you're ready.
                 </p>
               </div>

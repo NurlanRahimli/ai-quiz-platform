@@ -600,6 +600,38 @@
     animation: quiz-search-card-enter 320ms ease-out forwards;
 }
 
+
+.quiz-search-creator-link {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 160ms ease;
+}
+
+.quiz-search-creator-link:hover {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.quiz-search-creator-link:focus-visible {
+    border-radius: 3px;
+    outline: 2px solid rgba(124, 58, 237, 0.3);
+    outline-offset: 2px;
+}
+
+
+.quiz-search-created-by-me {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+
 @keyframes quiz-search-card-enter {
     from {
         opacity: 0;

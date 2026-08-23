@@ -3,6 +3,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.schemas.quiz import (
+    QuizDiscoveryResponse,
+    QuizListResponse,
+)
+
 
 class UserRegister(BaseModel):
     display_name: str = Field(min_length=2, max_length=100)
@@ -49,6 +54,25 @@ class UserResponse(BaseModel):
     display_name: str
     is_active: bool
     created_at: datetime
+
+
+class PublicUserProfileResponse(BaseModel):
+    id: uuid.UUID
+    display_name: str
+    created_at: datetime
+    public_quiz_count: int
+    quizzes: list[QuizDiscoveryResponse]
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class UserQuizPageResponse(BaseModel):
+    quizzes: list[QuizListResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
 
 
 class UserLogin(BaseModel):

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth"
 import axios from "axios";
 
 import {
@@ -122,6 +123,7 @@ function getPaginationItems(
 
 export default function DiscoverQuizzesPage() {
   const navigate = useNavigate();
+  const { user } = useAuth()
   const [quizzes, setQuizzes] = useState<DiscoveryQuiz[]>([]);
   const [featured, setFeatured] = useState<DiscoveryQuiz[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -387,9 +389,26 @@ export default function DiscoverQuizzesPage() {
                 <div className="discover-featured-card__creator">
                   <UserRound size={14} aria-hidden="true" />
 
-                  <span>
-                    By <strong>{quiz.creator_name}</strong>
-                  </span>
+                  {user?.id === quiz.owner_id ? (
+                    <span className="discover-created-by-me">
+                      Created by Me
+                    </span>
+                  ) : (
+                    <>
+                      <span>By</span>
+
+                      <button
+                        type="button"
+                        className="discover-creator-link"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          navigate(`/users/${quiz.owner_id}`)
+                        }}
+                      >
+                        {quiz.creator_name}
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <div className="discover-featured-card__footer">
@@ -502,7 +521,27 @@ export default function DiscoverQuizzesPage() {
                   <div className="discover-quiz-row__mobile-meta">
                     <div className="discover-quiz-row__mobile-creator">
                       <UserRound size={14} aria-hidden="true" />
-                      <span>By {quiz.creator_name}</span>
+
+                      {user?.id === quiz.owner_id ? (
+                        <span className="discover-created-by-me">
+                          Created by Me
+                        </span>
+                      ) : (
+                        <>
+                          <span>By</span>
+
+                          <button
+                            type="button"
+                            className="discover-creator-link"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              navigate(`/users/${quiz.owner_id}`)
+                            }}
+                          >
+                            {quiz.creator_name}
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     <div className="discover-quiz-row__mobile-stats">
@@ -523,7 +562,27 @@ export default function DiscoverQuizzesPage() {
 
                 <div className="discover-quiz-row__creator">
                   <UserRound size={15} aria-hidden="true" />
-                  <span>By {quiz.creator_name}</span>
+
+                  {user?.id === quiz.owner_id ? (
+                    <span className="discover-created-by-me">
+                      Created by Me
+                    </span>
+                  ) : (
+                    <>
+                      <span>By</span>
+
+                      <button
+                        type="button"
+                        className="discover-creator-link"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          navigate(`/users/${quiz.owner_id}`)
+                        }}
+                      >
+                        {quiz.creator_name}
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <div className="discover-quiz-row__stat">

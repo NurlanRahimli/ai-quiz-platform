@@ -4,7 +4,10 @@ import {
     useRef,
     useState,
 } from "react";
+import { useAuth } from "../../auth/useAuth"
+
 import axios from "axios";
+
 import {
     ArrowLeft,
     ArrowRight,
@@ -15,6 +18,7 @@ import {
 
 import apiClient from "../../api/client";
 import { useNavigate } from "react-router-dom";
+
 
 import "../../styles/pages/quizzes/SearchQuizzesPage.css";
 
@@ -49,6 +53,7 @@ type DiscoveryOverviewResponse = {
 
 export default function SearchQuizzesPage() {
     const navigate = useNavigate();
+    const { user } = useAuth()
     const inputRef = useRef<HTMLInputElement>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -491,7 +496,27 @@ export default function SearchQuizzesPage() {
                                             <div className="quiz-search-result-card__meta">
                                                 <span>
                                                     <UserRound size={13} aria-hidden="true" />
-                                                    By {quiz.creator_name}
+
+                                                    {user?.id === quiz.owner_id ? (
+                                                        <span className="quiz-search-created-by-me">
+                                                            Created by Me
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            By
+
+                                                            <button
+                                                                type="button"
+                                                                className="quiz-search-creator-link"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation()
+                                                                    navigate(`/users/${quiz.owner_id}`)
+                                                                }}
+                                                            >
+                                                                {quiz.creator_name}
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </span>
 
                                                 <span>

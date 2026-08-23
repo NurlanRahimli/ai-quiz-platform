@@ -42,47 +42,47 @@
 }
 
 .discover-search {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 11px;
-  padding: 0 16px;
-  height: 48px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 13px;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font: inherit;
-  text-align: left;
-  cursor: text;
-  box-shadow: 0 8px 25px rgb(0 0 0 / 3%);
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 11px;
+    padding: 0 16px;
+    height: 48px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 13px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    font: inherit;
+    text-align: left;
+    cursor: text;
+    box-shadow: 0 8px 25px rgb(0 0 0 / 3%);
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease;
 }
 
 .discover-search:hover {
-  border-color: rgb(139 92 246 / 28%);
-  box-shadow:
-    0 0 0 3px rgb(139 92 246 / 6%),
-    0 8px 25px rgb(0 0 0 / 3%);
+    border-color: rgb(139 92 246 / 28%);
+    box-shadow:
+        0 0 0 3px rgb(139 92 246 / 6%),
+        0 8px 25px rgb(0 0 0 / 3%);
 }
 
 .discover-search:focus-visible {
-  outline: 3px solid rgb(139 92 246 / 18%);
-  outline-offset: 2px;
+    outline: 3px solid rgb(139 92 246 / 18%);
+    outline-offset: 2px;
 }
 
-.discover-search > svg {
-  flex: 0 0 auto;
-  color: var(--color-text-muted);
+.discover-search>svg {
+    flex: 0 0 auto;
+    color: var(--color-text-muted);
 }
 
 .discover-search span {
-  overflow: hidden;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .discover-categories {
@@ -653,6 +653,38 @@
     background: var(--color-primary-400);
     animation: discover-loading-pulse 800ms ease-in-out infinite alternate;
 }
+
+
+.discover-creator-link {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 160ms ease;
+}
+
+.discover-creator-link:hover {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.discover-creator-link:focus-visible {
+    border-radius: 3px;
+    outline: 2px solid rgba(124, 58, 237, 0.3);
+    outline-offset: 2px;
+}
+
+
+.discover-created-by-me {
+    font-weight: 700;
+    color: var(--primary);
+}
+
 
 @keyframes discover-loading-pulse {
     from {
