@@ -184,6 +184,87 @@
     font-weight: 500;
 }
 
+
+.public-profile-hero__actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 24px;
+}
+
+.public-profile-follow {
+    display: inline-flex;
+    min-width: 118px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 18px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: var(--color-primary-600);
+    box-shadow: 0 8px 22px rgb(124 58 237 / 18%);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        transform 160ms ease,
+        background 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        color 160ms ease;
+}
+
+.public-profile-follow:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: var(--color-primary-500);
+    box-shadow: 0 10px 26px rgb(124 58 237 / 24%);
+}
+
+.public-profile-follow:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.public-profile-follow:focus-visible {
+    outline: 3px solid rgb(139 92 246 / 22%);
+    outline-offset: 3px;
+}
+
+.public-profile-follow--following {
+    border-color: var(--color-border-subtle);
+    background: var(--color-surface);
+    box-shadow: none;
+    color: var(--color-text-primary);
+}
+
+.public-profile-follow--following:hover:not(:disabled) {
+    border-color: rgb(139 92 246 / 28%);
+    background: rgb(124 58 237 / 7%);
+    box-shadow: none;
+    color: var(--color-primary-400);
+}
+
+.public-profile-follow:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+
+.public-profile-stats {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+
+.public-profile-stat {
+    min-width: 70px;
+}
+
+
 .public-profile-stat {
     position: relative;
     z-index: 1;
@@ -522,10 +603,24 @@
     }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
+    .public-profile-identity__name h2 {
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
+
     .public-profile-hero {
         min-height: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 24px;
         padding: 30px;
+    }
+
+    .public-profile-hero__identity {
+        width: 100%;
+        align-items: center;
     }
 
     .public-profile-avatar {
@@ -536,6 +631,51 @@
 
     .public-profile-avatar span {
         font-size: 36px;
+    }
+
+    .public-profile-identity {
+        flex: 1;
+    }
+
+    .public-profile-hero__actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 18px;
+    }
+
+    .public-profile-follow {
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+    }
+
+    .public-profile-stats {
+        width: 100%;
+        justify-content: space-around;
+        gap: 8px;
+        padding-top: 20px;
+        border-top: 1px solid var(--color-border-subtle);
+    }
+
+    .public-profile-stat {
+        width: auto;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    .public-profile-stat strong {
+        font-size: 26px;
+    }
+
+    .public-profile-stat span {
+        margin-top: 6px;
     }
 }
 
@@ -596,23 +736,6 @@
         font-size: 12px;
     }
 
-    .public-profile-stat {
-        width: 100%;
-        flex-direction: row;
-        align-items: baseline;
-        justify-content: center;
-        gap: 7px;
-        padding-top: 20px;
-        border-top: 1px solid var(--color-border-subtle);
-    }
-
-    .public-profile-stat strong {
-        font-size: 26px;
-    }
-
-    .public-profile-stat span {
-        margin: 0;
-    }
 
     .public-profile-quizzes {
         margin-top: 30px;
@@ -630,6 +753,7 @@
 @media (prefers-reduced-motion: reduce) {
 
     .public-profile-back,
+    .public-profile-follow,
     .public-profile-quiz-card,
     .public-profile-quiz-card__open {
         transition: none;

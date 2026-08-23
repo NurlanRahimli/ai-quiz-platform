@@ -84,6 +84,7 @@ def test_public_user_profile_returns_only_public_quizzes(client):
     assert data["display_name"] == "Public Creator"
     assert "created_at" in data
     assert data["public_quiz_count"] == 1
+    assert data["is_following"] is False
 
     assert "email" not in data
     assert "is_active" not in data
@@ -353,3 +354,195 @@ def test_current_user_quizzes_are_paginated(client):
     }
 
     assert visibilities == {"public", "unlisted"}
+
+
+def test_user_can_follow_creator_and_duplicate_follow_is_idempotent(client):
+    creator, _ = register_and_login(
+        client,
+        email="follow-creator@example.com",
+        display_name="Follow Creator",
+    )
+    follower, follower_headers = register_and_login(
+        client,
+        email="follower@example.com",
+        display_name="Follower",
+    )
+
+    response = client.post(
+        f"/api/v1/users/{creator['id']}/follow",
+        headers=follower_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "user_id": creator["id"],
+        "is_following": True,
+    }
+
+    duplicate_response = client.post(
+        f"/api/v1/users/{creator['id']}/follow",
+        headers=follower_headers,
+    )
+
+    assert duplicate_response.status_code == 200
+    assert duplicate_response.json() == {
+        "user_id": creator["id"],
+        "is_following": True,
+    }
+
+    assert follower["id"] != creator["id"]
+
+
+def test_user_cannot_follow_themselves(client):
+    user, headers = register_and_login(
+        client,
+        email="self-follow@example.com",
+        display_name="Self Follow User",
+    )
+
+    response = client.post(
+        f"/api/v1/users/{user['id']}/follow",
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "You cannot follow yourself"
+
+
+def test_follow_returns_404_for_unknown_user(client):
+    _, headers = register_and_login(
+        client,
+        email="unknown-follow@example.com",
+        display_name="Unknown Follow User",
+    )
+
+    response = client.post(
+        f"/api/v1/users/{uuid.uuid4()}/follow",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+
+def test_follow_requires_authentication(client):
+    response = client.post(
+        f"/api/v1/users/{uuid.uuid4()}/follow",
+    )
+
+    assert response.status_code in {401, 403}
+
+
+def test_user_can_unfollow_creator_and_duplicate_unfollow_is_idempotent(client):
+    creator, _ = register_and_login(
+        client,
+        email="unfollow-creator@example.com",
+        display_name="Unfollow Creator",
+    )
+    _, follower_headers = register_and_login(
+        client,
+        email="unfollow-follower@example.com",
+        display_name="Unfollow Follower",
+    )
+
+    follow_response = client.post(
+        f"/api/v1/users/{creator['id']}/follow",
+        headers=follower_headers,
+    )
+
+    assert follow_response.status_code == 200
+    assert follow_response.json()["is_following"] is True
+
+    unfollow_response = client.delete(
+        f"/api/v1/users/{creator['id']}/follow",
+        headers=follower_headers,
+    )
+
+    assert unfollow_response.status_code == 200
+    assert unfollow_response.json() == {
+        "user_id": creator["id"],
+        "is_following": False,
+    }
+
+    duplicate_unfollow_response = client.delete(
+        f"/api/v1/users/{creator['id']}/follow",
+        headers=follower_headers,
+    )
+
+    assert duplicate_unfollow_response.status_code == 200
+    assert duplicate_unfollow_response.json() == {
+        "user_id": creator["id"],
+        "is_following": False,
+    }
+
+
+def test_user_cannot_unfollow_themselves(client):
+    user, headers = register_and_login(
+        client,
+        email="self-unfollow@example.com",
+        display_name="Self Unfollow User",
+    )
+
+    response = client.delete(
+        f"/api/v1/users/{user['id']}/follow",
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "You cannot unfollow yourself"
+
+
+def test_public_profile_reflects_follow_state(client):
+    creator, _ = register_and_login(
+        client,
+        email="follow-state-creator@example.com",
+        display_name="Follow State Creator",
+    )
+    _, viewer_headers = register_and_login(
+        client,
+        email="follow-state-viewer@example.com",
+        display_name="Follow State Viewer",
+    )
+
+    profile_before_follow = client.get(
+        f"/api/v1/users/{creator['id']}/profile",
+        headers=viewer_headers,
+    )
+
+    assert profile_before_follow.status_code == 200
+    assert profile_before_follow.json()["is_following"] is False
+    assert profile_before_follow.json()["follower_count"] == 0
+
+    follow_response = client.post(
+        f"/api/v1/users/{creator['id']}/follow",
+        headers=viewer_headers,
+    )
+
+    assert follow_response.status_code == 200
+    assert follow_response.json()["is_following"] is True
+
+    profile_after_follow = client.get(
+        f"/api/v1/users/{creator['id']}/profile",
+        headers=viewer_headers,
+    )
+
+    assert profile_after_follow.status_code == 200
+    assert profile_after_follow.json()["is_following"] is True
+    assert profile_after_follow.json()["follower_count"] == 1
+
+    unfollow_response = client.delete(
+        f"/api/v1/users/{creator['id']}/follow",
+        headers=viewer_headers,
+    )
+
+    assert unfollow_response.status_code == 200
+    assert unfollow_response.json()["is_following"] is False
+
+    profile_after_unfollow = client.get(
+        f"/api/v1/users/{creator['id']}/profile",
+        headers=viewer_headers,
+    )
+
+    assert profile_after_unfollow.status_code == 200
+    assert profile_after_unfollow.json()["is_following"] is False
+    assert profile_after_unfollow.json()["follower_count"] == 0
