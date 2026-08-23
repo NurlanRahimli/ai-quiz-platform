@@ -2,7 +2,8 @@ import {
   LayoutDashboard,
   LogOut,
   Plus,
-  Compass
+  Compass,
+  ScrollText,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -71,8 +72,7 @@ export default function Sidebar({
             to="/discover"
             onClick={onClose}
             className={({ isActive }) =>
-              `app-sidebar__link ${
-                isActive ? "app-sidebar__link--active" : ""
+              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
               }`
             }
           >
@@ -100,6 +100,22 @@ export default function Sidebar({
               aria-hidden="true"
             />
             Create Quiz
+          </NavLink>
+          <NavLink
+            to="/audit-log"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              }`
+            }
+          >
+            <ScrollText
+              className="app-sidebar__link-icon"
+              size={19}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
+            Audit Log
           </NavLink>
         </div>
       </nav>

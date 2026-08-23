@@ -1,3 +1,7 @@
+from sqlalchemy import select
+from app.models.audit_log import AuditLog
+import uuid
+
 def register_and_login(
     client,
     email="quiz@example.com",
@@ -1063,3 +1067,171 @@ def test_create_quiz_rejects_more_than_five_tags(client):
     )
 
     assert response.status_code == 422
+
+
+def test_create_quiz_records_audit_log(client, db):
+    headers = register_and_login(
+        client,
+        email="audit-create@example.com",
+    )
+
+    me_response = client.get(
+        "/api/v1/auth/me",
+        headers=headers,
+    )
+
+    assert me_response.status_code == 200
+    user = me_response.json()
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Python Fundamentals",
+            "description": "A quiz used to test audit logging.",
+            "visibility": "public",
+        },
+    )
+
+    assert response.status_code == 201
+
+    quiz = response.json()
+
+    audit_logs = list(
+        db.scalars(
+            select(AuditLog).where(
+                AuditLog.user_id == uuid.UUID(user["id"]),
+                AuditLog.action == "quiz_created",
+            )
+        )
+    )
+
+    assert len(audit_logs) == 1
+
+    audit_log = audit_logs[0]
+
+    assert str(audit_log.user_id) == user["id"]
+    assert str(audit_log.quiz_id) == quiz["id"]
+    assert audit_log.action == "quiz_created"
+    assert audit_log.quiz_title == "Python Fundamentals"
+    assert audit_log.creator_name == "Quiz User"
+    assert audit_log.created_at is not None
+
+
+def test_update_quiz_records_audit_log_with_updated_title(client, db):
+    headers = register_and_login(
+        client,
+        email="audit-update@example.com",
+    )
+
+    me_response = client.get(
+        "/api/v1/auth/me",
+        headers=headers,
+    )
+    assert me_response.status_code == 200
+    user = me_response.json()
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Original Quiz Title",
+            "visibility": "public",
+        },
+    )
+    assert create_response.status_code == 201
+    quiz = create_response.json()
+
+    update_response = client.patch(
+        f"/api/v1/quizzes/{quiz['id']}",
+        headers=headers,
+        json={
+            "title": "Updated Quiz Title",
+        },
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["title"] == "Updated Quiz Title"
+
+    audit_logs = list(
+        db.scalars(
+            select(AuditLog)
+            .where(
+                AuditLog.user_id == uuid.UUID(user["id"]),
+            )
+            .order_by(AuditLog.created_at.asc())
+        )
+    )
+
+    assert len(audit_logs) == 2
+
+    created_log = next(
+        log for log in audit_logs
+        if log.action == "quiz_created"
+    )
+    updated_log = next(
+        log for log in audit_logs
+        if log.action == "quiz_updated"
+    )
+
+    assert str(created_log.quiz_id) == quiz["id"]
+    assert created_log.quiz_title == "Original Quiz Title"
+
+    assert str(updated_log.user_id) == user["id"]
+    assert str(updated_log.quiz_id) == quiz["id"]
+    assert updated_log.action == "quiz_updated"
+    assert updated_log.quiz_title == "Updated Quiz Title"
+    assert updated_log.creator_name == "Quiz User"
+    assert updated_log.created_at is not None
+
+
+def test_delete_quiz_records_audit_log_after_quiz_is_deleted(client, db):
+    headers = register_and_login(
+        client,
+        email="audit-delete@example.com",
+    )
+
+    me_response = client.get(
+        "/api/v1/auth/me",
+        headers=headers,
+    )
+    assert me_response.status_code == 200
+    user = me_response.json()
+
+    create_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Quiz That Will Be Deleted",
+            "visibility": "public",
+        },
+    )
+    assert create_response.status_code == 201
+    quiz = create_response.json()
+
+    delete_response = client.delete(
+        f"/api/v1/quizzes/{quiz['id']}",
+        headers=headers,
+    )
+    assert delete_response.status_code == 204
+
+    deleted_quiz_response = client.get(
+        f"/api/v1/quizzes/{quiz['id']}",
+        headers=headers,
+    )
+    assert deleted_quiz_response.status_code == 404
+
+    deleted_audit_log = db.scalar(
+        select(AuditLog).where(
+            AuditLog.user_id == uuid.UUID(user["id"]),
+            AuditLog.quiz_id == uuid.UUID(quiz["id"]),
+            AuditLog.action == "quiz_deleted",
+        )
+    )
+
+    assert deleted_audit_log is not None
+    assert str(deleted_audit_log.user_id) == user["id"]
+    assert str(deleted_audit_log.quiz_id) == quiz["id"]
+    assert deleted_audit_log.action == "quiz_deleted"
+    assert deleted_audit_log.quiz_title == "Quiz That Will Be Deleted"
+    assert deleted_audit_log.creator_name == "Quiz User"
+    assert deleted_audit_log.created_at is not None

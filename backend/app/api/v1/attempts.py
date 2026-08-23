@@ -21,6 +21,7 @@ from app.schemas.quiz_attempt import (
     QuizAttemptResultChoice,
 )
 from app.services.quiz_grading import grade_attempt_answer
+from app.models.audit_log import AuditLog
 
 
 router = APIRouter(
@@ -158,6 +159,28 @@ def submit_quiz_attempt(
                 text_answer=submitted_answer.text_answer,
             )
         )
+
+
+    quiz_creator = db.scalar(
+        select(User).where(User.id == quiz.owner_id)
+    )
+
+    if quiz_creator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz creator not found",
+        )
+
+    audit_log = AuditLog(
+        user_id=current_user.id,
+        quiz_id=quiz.id,
+        action="quiz_completed",
+        quiz_title=quiz.title,
+        creator_name=quiz_creator.display_name,
+    )
+
+    db.add(audit_log)
+
 
     db.add(attempt)
     db.commit()

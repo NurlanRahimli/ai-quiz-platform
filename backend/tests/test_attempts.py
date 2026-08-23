@@ -1,3 +1,10 @@
+import uuid
+
+from sqlalchemy import select
+
+from app.models.audit_log import AuditLog
+
+
 def register_and_login(
     client,
     email="attempt-user@example.com",
@@ -720,3 +727,72 @@ def test_can_submit_quiz_with_unanswered_questions(client):
 
     data = response.json()
     assert len(data["answers"]) == 3
+
+
+def test_submit_quiz_attempt_records_completion_audit(client, db):
+    creator_headers = register_and_login(
+        client,
+        email="audit-creator@example.com",
+    )
+
+    quiz = create_quiz_with_questions(
+        client,
+        creator_headers,
+    )
+
+    taker_headers = register_and_login(
+        client,
+        email="audit-taker@example.com",
+    )
+
+    taker_response = client.get(
+        "/api/v1/auth/me",
+        headers=taker_headers,
+    )
+    assert taker_response.status_code == 200
+    taker = taker_response.json()
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=taker_headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "2x = 10, so x = 5.",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+
+    audit_log = db.scalar(
+        select(AuditLog).where(
+            AuditLog.user_id == uuid.UUID(taker["id"]),
+            AuditLog.quiz_id == uuid.UUID(quiz["quiz_id"]),
+            AuditLog.action == "quiz_completed",
+        )
+    )
+
+    assert audit_log is not None
+    assert str(audit_log.user_id) == taker["id"]
+    assert str(audit_log.quiz_id) == quiz["quiz_id"]
+    assert audit_log.action == "quiz_completed"
+    assert audit_log.quiz_title == "Quiz Attempt Test"
+    assert audit_log.creator_name == "Attempt User"
+    assert audit_log.created_at is not None
