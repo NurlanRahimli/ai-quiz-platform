@@ -574,24 +574,60 @@
    Tablet
    ========================================================= */
 
-@media (max-width: 900px) {
+@media (min-width: 641px) and (max-width: 1100px) {
+    .audit-log-page {
+        padding-right: 20px;
+        padding-left: 20px;
+    }
+
+    .audit-log-table {
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+    }
 
     .audit-log-table__header,
     .audit-log-table__row {
+        width: 100%;
+        min-width: 0;
         grid-template-columns:
-            minmax(150px, 1.5fr) minmax(120px, 1fr) minmax(150px, 1fr) minmax(95px, auto);
-
-        column-gap: 14px;
+            minmax(0, 1.35fr) minmax(0, 1fr) minmax(125px, 1.15fr) minmax(70px, auto);
+        column-gap: 8px;
+        padding-right: 12px;
+        padding-left: 12px;
     }
 
-    .audit-log-table__header {
-        padding-right: 16px;
-        padding-left: 16px;
+    .audit-log-table__quiz,
+    .audit-log-table__creator,
+    .audit-log-table__date {
+        min-width: 0;
     }
 
-    .audit-log-table__row {
-        padding-right: 16px;
-        padding-left: 16px;
+    .audit-log-table__quiz,
+    .audit-log-table__creator {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .audit-log-table__date {
+        font-size: 11px;
+        line-height: 1.35;
+        white-space: normal;
+    }
+
+    .audit-log-table__header>div:last-child,
+    .audit-log-table__row>div:last-child {
+        min-width: 0;
+        justify-self: end;
+    }
+
+    .audit-log-action {
+        min-width: 0;
+        max-width: 100%;
+        padding: 5px 7px;
+        font-size: 10px;
+        white-space: nowrap;
     }
 }
 
@@ -699,7 +735,7 @@
 
     .audit-log-filters {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
     }
 
