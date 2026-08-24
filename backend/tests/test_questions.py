@@ -909,3 +909,39 @@ def test_math_work_question_stores_expected_answer(client):
 
     assert response.status_code == 201
     assert response.json()["expected_answer"] == "4x"
+
+
+def test_quiz_cannot_have_more_than_30_questions(client):
+    headers = register_and_login(
+        client,
+        email="question-limit@example.com",
+    )
+    quiz_id = create_quiz(
+        client,
+        headers,
+        title="Thirty Question Quiz",
+    )
+
+    for index in range(30):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz_id}/questions/written",
+            headers=headers,
+            json={
+                "text": f"Question {index + 1}",
+            },
+        )
+
+        assert response.status_code == 201
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/written",
+        headers=headers,
+        json={
+            "text": "Question 31",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "A quiz can have a maximum of 30 questions"
+    )

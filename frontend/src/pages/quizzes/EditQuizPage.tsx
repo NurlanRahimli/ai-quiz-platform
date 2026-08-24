@@ -99,6 +99,8 @@ const QUIZ_CATEGORIES = [
   "Other",
 ]
 
+const MAX_QUESTIONS_PER_QUIZ = 30
+
 function EditQuizPage() {
   const { quizId } = useParams()
   const navigate = useNavigate()
@@ -584,6 +586,13 @@ function EditQuizPage() {
 
   const createQuestion = async () => {
     if (!quizId) {
+      return
+    }
+
+    if (questionCount >= MAX_QUESTIONS_PER_QUIZ) {
+      setNewQuestionError(
+        "A quiz can have a maximum of 30 questions.",
+      )
       return
     }
 
@@ -1085,11 +1094,10 @@ function EditQuizPage() {
                   type="button"
                   role="radio"
                   aria-checked={form.visibility === "unlisted"}
-                  className={`quiz-visibility-option ${
-                    form.visibility === "unlisted"
-                      ? "quiz-visibility-option--selected"
-                      : ""
-                  }`}
+                  className={`quiz-visibility-option ${form.visibility === "unlisted"
+                    ? "quiz-visibility-option--selected"
+                    : ""
+                    }`}
                   disabled={isSaving}
                   onClick={() => {
                     setForm((current) => ({
@@ -1126,11 +1134,10 @@ function EditQuizPage() {
                   type="button"
                   role="radio"
                   aria-checked={form.visibility === "public"}
-                  className={`quiz-visibility-option ${
-                    form.visibility === "public"
-                      ? "quiz-visibility-option--selected"
-                      : ""
-                  }`}
+                  className={`quiz-visibility-option ${form.visibility === "public"
+                    ? "quiz-visibility-option--selected"
+                    : ""
+                    }`}
                   disabled={isSaving}
                   onClick={() => {
                     setForm((current) => ({
@@ -1189,14 +1196,26 @@ function EditQuizPage() {
             <Button
               type="button"
               onClick={() => {
+                if (questionCount >= MAX_QUESTIONS_PER_QUIZ) {
+                  setNewQuestionError(
+                    "A quiz can have a maximum of 30 questions.",
+                  )
+                  return
+                }
+
                 setIsAddingQuestion(true)
                 setNewQuestionError("")
                 setSuccessMessage("")
               }}
-              disabled={isAddingQuestion}
+              disabled={
+                isAddingQuestion ||
+                questionCount >= MAX_QUESTIONS_PER_QUIZ
+              }
             >
               <Plus size={17} strokeWidth={2} aria-hidden="true" />
-              Add a question
+              {questionCount >= MAX_QUESTIONS_PER_QUIZ
+                ? "30 question limit reached"
+                : "Add a question"}
             </Button>
           </div>
 

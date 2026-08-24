@@ -6,11 +6,13 @@ import {
   ArrowRight,
   CalendarDays,
   CircleUserRound,
+  MoreHorizontal,
   FileQuestion,
   Grid3X3,
   Pencil,
   Plus,
   Sparkles,
+  Trash2,
 } from "lucide-react"
 
 import apiClient from "../../api/client"
@@ -67,6 +69,9 @@ function ProfilePage() {
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [quizError, setQuizError] = useState("")
+  const [openQuizMenuId, setOpenQuizMenuId] = useState<string | null>(
+    null,
+  )
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const isLoadingMoreRef = useRef(false)
@@ -149,6 +154,65 @@ function ProfilePage() {
       setIsLoadingMore(false)
     }
   }, [quizPage, quizTotalPages])
+
+
+  const handleDeleteQuiz = async (
+    quizId: string,
+    quizTitle: string,
+  ) => {
+    setOpenQuizMenuId(null)
+
+    const result = await Swal.fire({
+      title: "Delete quiz?",
+      text: `"${quizTitle}" will be permanently deleted. This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Delete Quiz",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#ef4444",
+      reverseButtons: true,
+    })
+
+    if (!result.isConfirmed) {
+      return
+    }
+
+    try {
+      await apiClient.delete(`/quizzes/${quizId}`)
+
+      setQuizzes((currentQuizzes) =>
+        currentQuizzes.filter((quiz) => quiz.id !== quizId),
+      )
+
+      setQuizTotal((currentTotal) =>
+        Math.max(0, currentTotal - 1),
+      )
+
+      await Swal.fire({
+        title: "Quiz deleted",
+        text: `"${quizTitle}" has been deleted.`,
+        icon: "success",
+        confirmButtonText: "Done",
+      })
+    } catch (error) {
+      let message = "Unable to delete this quiz. Please try again."
+
+      if (axios.isAxiosError(error)) {
+        const detail = error.response?.data?.detail
+
+        if (typeof detail === "string") {
+          message = detail
+        }
+      }
+
+      await Swal.fire({
+        title: "Couldn't delete quiz",
+        text: message,
+        icon: "error",
+        confirmButtonText: "OK",
+      })
+    }
+  }
 
 
   useEffect(() => {
@@ -425,6 +489,63 @@ function ProfilePage() {
                     }}
                   >
                     <div className="profile-quiz-card__visual">
+                      <div
+                        className="profile-quiz-card__actions"
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="profile-quiz-card__menu-trigger"
+                          aria-label={`Actions for ${quiz.title}`}
+                          aria-haspopup="menu"
+                          aria-expanded={openQuizMenuId === quiz.id}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setOpenQuizMenuId((currentId) =>
+                              currentId === quiz.id ? null : quiz.id,
+                            )
+                          }}
+                        >
+                          <MoreHorizontal size={19} aria-hidden="true" />
+                        </button>
+
+                        {openQuizMenuId === quiz.id && (
+                          <div
+                            className="profile-quiz-card__menu"
+                            role="menu"
+                            aria-label={`Quiz actions for ${quiz.title}`}
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setOpenQuizMenuId(null)
+                                navigate(`/quizzes/edit/${quiz.id}`)
+                              }}
+                            >
+                              <Pencil size={15} aria-hidden="true" />
+                              Edit Quiz
+                            </button>
+
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="profile-quiz-card__menu-delete"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setOpenQuizMenuId(null)
+                                void handleDeleteQuiz(quiz.id, quiz.title)
+                              }}
+                            >
+                              <Trash2 size={15} aria-hidden="true" />
+                              Delete Quiz
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="profile-quiz-card__number">
                         {String(index + 1).padStart(2, "0")}
                       </div>
