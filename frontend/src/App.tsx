@@ -20,6 +20,7 @@ import SearchQuizzesPage from "./pages/quizzes/SearchQuizzesPage";
 import PublicProfilePage from "./pages/profile/PublicProfilePage"
 import AuditLogPage from "./pages/audit/AuditLogPage";
 import MyAttemptsPage from "./pages/attempts/MyAttemptsPage";
+import ImportQuizPage from "./pages/quizzes/ImportQuizPage";
 
 
 function QuizDetailsLayout() {
@@ -46,6 +47,10 @@ function ProtectedAppLayout() {
     <AppShell>
       <Routes>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route
+          path="/import-quiz"
+          element={<ImportQuizPage />}
+        />
         <Route path="/quizzes/edit/:quizId" element={<EditQuizPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/audit-log" element={<AuditLogPage />} />
