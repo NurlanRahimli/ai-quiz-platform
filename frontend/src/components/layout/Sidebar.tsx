@@ -5,6 +5,7 @@ import {
   Compass,
   History,
   ScrollText,
+  ScanText
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -119,6 +120,24 @@ export default function Sidebar({
             />
             Create Quiz
           </NavLink>
+
+          <NavLink
+            to="/import-quiz"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              }`
+            }
+          >
+            <ScanText
+              className="app-sidebar__link-icon"
+              size={19}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
+            Import Quiz
+          </NavLink>
+
           <NavLink
             to="/audit-log"
             onClick={onClose}
