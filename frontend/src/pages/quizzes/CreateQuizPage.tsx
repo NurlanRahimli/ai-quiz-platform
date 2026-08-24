@@ -84,6 +84,8 @@ const QUIZ_CATEGORIES = [
   "Other",
 ] as const;
 
+const MAX_QUESTIONS_PER_QUIZ = 30;
+
 const defaultChoices: NewQuestionChoice[] = [
   {
     id: "choice-1",
@@ -278,6 +280,13 @@ function CreateQuizPage() {
   };
 
   const addQuestion = () => {
+    if (questions.length >= MAX_QUESTIONS_PER_QUIZ) {
+      setNewQuestionError(
+        "Maximum of 30 questions reached.",
+      );
+      return;
+    }
+
     const trimmedText = newQuestionText.trim();
 
     if (!trimmedText) {
@@ -701,8 +710,8 @@ function CreateQuizPage() {
                       role="radio"
                       aria-checked={form.visibility === "unlisted"}
                       className={`quiz-visibility-option ${form.visibility === "unlisted"
-                          ? "quiz-visibility-option--selected"
-                          : ""
+                        ? "quiz-visibility-option--selected"
+                        : ""
                         }`}
                       disabled={isSubmitting}
                       onClick={() => updateField("visibility", "unlisted")}
@@ -733,8 +742,8 @@ function CreateQuizPage() {
                       role="radio"
                       aria-checked={form.visibility === "public"}
                       className={`quiz-visibility-option ${form.visibility === "public"
-                          ? "quiz-visibility-option--selected"
-                          : ""
+                        ? "quiz-visibility-option--selected"
+                        : ""
                         }`}
                       disabled={isSubmitting}
                       onClick={() => updateField("visibility", "public")}
@@ -821,13 +830,16 @@ function CreateQuizPage() {
               {!isAddingQuestion && (
                 <Button
                   type="button"
+                  disabled={questions.length >= MAX_QUESTIONS_PER_QUIZ}
                   onClick={() => {
                     setIsAddingQuestion(true);
                     setNewQuestionError("");
                   }}
                 >
                   <Plus size={17} />
-                  Add question
+                  {questions.length >= MAX_QUESTIONS_PER_QUIZ
+                    ? "30 question limit reached"
+                    : "Add question"}
                 </Button>
               )}
             </div>
@@ -1136,9 +1148,12 @@ function CreateQuizPage() {
                   <Button
                     type="button"
                     onClick={addQuestion}
+                    disabled={questions.length >= MAX_QUESTIONS_PER_QUIZ}
                   >
                     <Plus size={17} />
-                    Add question
+                    {questions.length >= MAX_QUESTIONS_PER_QUIZ
+                      ? "30 question limit reached"
+                      : "Add question"}
                   </Button>
                 </div>
               </div>

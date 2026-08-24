@@ -32,6 +32,26 @@ router = APIRouter(
 )
 
 
+MAX_QUESTIONS_PER_QUIZ = 30
+
+
+def ensure_question_limit(
+    db: Session,
+    quiz_id: uuid.UUID,
+) -> None:
+    question_count = db.scalar(
+        select(func.count(Question.id)).where(
+            Question.quiz_id == quiz_id
+        )
+    )
+
+    if (question_count or 0) >= MAX_QUESTIONS_PER_QUIZ:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A quiz can have a maximum of 30 questions",
+        )
+
+
 @router.post(
     "/{quiz_id}/questions",
     response_model=QuestionResponse,
@@ -55,6 +75,8 @@ def create_multiple_choice_question(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Quiz not found",
         )
+
+    ensure_question_limit(db, quiz.id)
 
     current_position = db.scalar(
         select(func.max(Question.position)).where(
@@ -112,6 +134,8 @@ def create_written_answer_question(
             detail="Quiz not found",
         )
 
+    ensure_question_limit(db, quiz.id)
+
     current_position = db.scalar(
         select(func.max(Question.position)).where(
             Question.quiz_id == quiz.id
@@ -155,6 +179,8 @@ def create_math_work_question(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Quiz not found",
         )
+
+    ensure_question_limit(db, quiz.id)
 
     current_position = db.scalar(
         select(func.max(Question.position)).where(
