@@ -992,8 +992,6 @@ def test_create_quiz_normalizes_tags(client):
                 " Python ",
                 "python",
                 "  Beginner  ",
-                "",
-                "   ",
             ],
         },
     )

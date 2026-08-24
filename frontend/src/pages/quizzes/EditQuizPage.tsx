@@ -17,6 +17,7 @@ import {
   Trash2,
   Globe2,
   Link2,
+  Sparkles,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -117,6 +118,10 @@ function EditQuizPage() {
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false)
+  const [categorySuggestionError, setCategorySuggestionError] = useState("")
+  const [isSuggestingTags, setIsSuggestingTags] = useState(false)
+  const [tagSuggestionError, setTagSuggestionError] = useState("")
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(QUESTIONS_PER_BATCH)
   const [error, setError] = useState("")
   const [questionError, setQuestionError] = useState("")
@@ -279,7 +284,7 @@ function EditQuizPage() {
   const addTag = () => {
     const tag = tagInput.trim()
 
-    if (!tag || form.tags.length >= 5) {
+    if (!tag || form.tags.length >= 3) {
       return
     }
 
@@ -298,6 +303,7 @@ function EditQuizPage() {
     }))
 
     setTagInput("")
+    setTagSuggestionError("")
     setError("")
     setSuccessMessage("")
   }
@@ -309,9 +315,106 @@ function EditQuizPage() {
     }))
 
     setError("")
+    setTagSuggestionError("")
     setSuccessMessage("")
   }
 
+  const handleSuggestCategory = async () => {
+    const questionTexts = (quiz?.questions ?? [])
+      .map((question) => question.text.trim())
+      .filter(Boolean)
+
+    if (questionTexts.length === 0) {
+      setCategorySuggestionError(
+        "Add at least one question before using AI suggestions.",
+      )
+      return
+    }
+
+    setIsSuggestingCategory(true)
+    setCategorySuggestionError("")
+
+    try {
+      const response = await apiClient.post<{ category: string }>(
+        "/ai/suggest-category",
+        {
+          title: form.title.trim() || "Untitled Quiz",
+          description: form.description.trim() || null,
+          questions: questionTexts,
+        },
+      )
+
+      setForm((current) => ({
+        ...current,
+        category: response.data.category,
+      }))
+
+      setError("")
+      setSuccessMessage("")
+    } catch (requestError) {
+      if (axios.isAxiosError(requestError)) {
+        setCategorySuggestionError(
+          requestError.response?.data?.detail ??
+          "Unable to suggest a category right now.",
+        )
+      } else {
+        setCategorySuggestionError(
+          "Unable to suggest a category right now.",
+        )
+      }
+    } finally {
+      setIsSuggestingCategory(false)
+    }
+  }
+
+  const handleSuggestTags = async () => {
+    const questionTexts = (quiz?.questions ?? [])
+      .map((question) => question.text.trim())
+      .filter(Boolean)
+
+    if (questionTexts.length === 0) {
+      setTagSuggestionError(
+        "Add at least one question before using AI suggestions.",
+      )
+      return
+    }
+
+    setIsSuggestingTags(true)
+    setTagSuggestionError("")
+
+    try {
+      const response = await apiClient.post<{ tags: string[] }>(
+        "/ai/suggest-tags",
+        {
+          title: form.title.trim() || "Untitled Quiz",
+          description: form.description.trim() || null,
+          questions: questionTexts,
+        },
+      )
+
+      setForm((current) => ({
+        ...current,
+        tags: response.data.tags.slice(0, 3),
+      }))
+
+      setTagInput("")
+      setError("")
+      setSuccessMessage("")
+    } catch (requestError) {
+      if (axios.isAxiosError(requestError)) {
+        setTagSuggestionError(
+          requestError.response?.data?.detail ??
+          "Unable to suggest tags right now.",
+        )
+      } else {
+        setTagSuggestionError(
+          "Unable to suggest tags right now.",
+        )
+      }
+    } finally {
+      setIsSuggestingTags(false)
+    }
+  }
 
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>,
@@ -990,8 +1093,27 @@ function EditQuizPage() {
 
             <div className="edit-quiz-details__field">
               <div className="edit-quiz-details__label-row">
-                <label htmlFor="edit-quiz-category">Category</label>
-                <span>Optional</span>
+                <div className="edit-quiz-details__label-meta">
+                  <label htmlFor="edit-quiz-category">Category</label>
+                  <span>Optional</span>
+                </div>
+
+                <button
+                  type="button"
+                  className="edit-quiz-ai-button"
+                  disabled={
+                    isSaving ||
+                    isSuggestingCategory ||
+                    (quiz?.questions.length ?? 0) === 0
+                  }
+                  onClick={handleSuggestCategory}
+                >
+                  <Sparkles size={14} aria-hidden="true" />
+
+                  {isSuggestingCategory
+                    ? "Suggesting..."
+                    : "Suggest with AI"}
+                </button>
               </div>
 
               <select
@@ -1004,6 +1126,7 @@ function EditQuizPage() {
                     ...current,
                     category: event.target.value,
                   }))
+                  setCategorySuggestionError("")
                   setError("")
                   setSuccessMessage("")
                 }}
@@ -1016,12 +1139,41 @@ function EditQuizPage() {
                   </option>
                 ))}
               </select>
+              {categorySuggestionError && (
+                <p className="edit-quiz-details__field-error" role="alert">
+                  {categorySuggestionError}
+                </p>
+              )}
             </div>
 
             <div className="edit-quiz-details__field">
               <div className="edit-quiz-details__label-row">
-                <label htmlFor="edit-quiz-tags">Tags</label>
-                <span>{form.tags.length} / 5</span>
+                <div className="edit-quiz-details__label-meta">
+                  <label htmlFor="edit-quiz-tags">Tags</label>
+                  {tagSuggestionError && (
+                    <p className="edit-quiz-details__field-error" role="alert">
+                      {tagSuggestionError}
+                    </p>
+                  )}
+                  <span>{form.tags.length} / 3</span>
+                </div>
+
+                <button
+                  type="button"
+                  className="edit-quiz-ai-button"
+                  disabled={
+                    isSaving ||
+                    isSuggestingTags ||
+                    (quiz?.questions.length ?? 0) === 0
+                  }
+                  onClick={handleSuggestTags}
+                >
+                  <Sparkles size={14} aria-hidden="true" />
+
+                  {isSuggestingTags
+                    ? "Suggesting..."
+                    : "Suggest with AI"}
+                </button>
               </div>
 
               {form.tags.length > 0 && (
@@ -1049,10 +1201,10 @@ function EditQuizPage() {
                   type="text"
                   value={tagInput}
                   maxLength={50}
-                  disabled={isSaving || form.tags.length >= 5}
+                  disabled={isSaving || form.tags.length >= 3}
                   placeholder={
-                    form.tags.length >= 5
-                      ? "Maximum 5 tags"
+                    form.tags.length >= 3
+                      ? "Maximum 3 tags"
                       : "Add a tag..."
                   }
                   onChange={(event) => setTagInput(event.target.value)}
@@ -1068,7 +1220,7 @@ function EditQuizPage() {
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={!tagInput.trim() || form.tags.length >= 5}
+                  disabled={!tagInput.trim() || form.tags.length >= 3}
                   onClick={addTag}
                 >
                   Add
