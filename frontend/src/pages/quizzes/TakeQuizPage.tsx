@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useAuth } from "../../auth/useAuth"
 import type { FormEvent } from "react"
 import axios from "axios"
 import { useNavigate, useParams } from "react-router-dom"
@@ -57,6 +58,7 @@ type QuizDraft = {
 function TakeQuizPage() {
   const { quizId } = useParams()
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
 
   const [quiz, setQuiz] = useState<Quiz | null>(null)
   const [answers, setAnswers] = useState<Answers>({})
@@ -244,8 +246,26 @@ function TakeQuizPage() {
     setError("")
 
     try {
+      if (isAuthenticated) {
+        const response = await apiClient.post(
+          `/quizzes/${quizId}/attempts`,
+          {
+            answers: submittedAnswers,
+          },
+        )
+
+        localStorage.removeItem(`quiz-draft:${quizId}`)
+
+        navigate(
+          `/quizzes/${quizId}/attempts/${response.data.id}/results`,
+          { replace: true },
+        )
+
+        return
+      }
+
       const response = await apiClient.post(
-        `/quizzes/${quizId}/attempts`,
+        `/quizzes/${quizId}/attempts/guest`,
         {
           answers: submittedAnswers,
         },
@@ -254,8 +274,13 @@ function TakeQuizPage() {
       localStorage.removeItem(`quiz-draft:${quizId}`)
 
       navigate(
-        `/quizzes/${quizId}/attempts/${response.data.id}/results`,
-        { replace: true },
+        `/quizzes/${quizId}/guest-results`,
+        {
+          replace: true,
+          state: {
+            guestResults: response.data,
+          },
+        },
       )
     } catch (requestError) {
       if (axios.isAxiosError(requestError)) {
@@ -316,15 +341,17 @@ function TakeQuizPage() {
           </div>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => navigate(`/quizzes/${quizId}/history`)}
-        >
-          <History size={16} />
-          Attempt history
-        </Button>
+        {isAuthenticated && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/quizzes/${quizId}/history`)}
+          >
+            <History size={16} />
+            Attempt history
+          </Button>
+        )}
       </div>
 
       {questionCount === 0 ? (
