@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 from datetime import date, datetime, time, timedelta
@@ -25,6 +25,7 @@ from app.schemas.quiz_attempt import (
     GuestQuizAttemptResultResponse,
 )
 from app.services.quiz_grading import grade_attempt_answer
+from app.services.quiz_result_pdf import build_quiz_result_pdf
 from app.models.audit_log import AuditLog
 
 
@@ -824,4 +825,61 @@ def get_quiz_attempt_results(
         gradable_questions=gradable_questions,
         total_questions=len(attempt.answers),
         answers=result_answers,
+    )
+
+
+@router.get(
+    "/{quiz_id}/attempts/{attempt_id}/results/pdf",
+    response_class=Response,
+)
+def export_quiz_attempt_results_pdf(
+    quiz_id: uuid.UUID,
+    attempt_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    results = get_quiz_attempt_results(
+        quiz_id=quiz_id,
+        attempt_id=attempt_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    quiz = db.scalar(
+        select(Quiz).where(Quiz.id == quiz_id)
+    )
+
+    if quiz is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found",
+        )
+
+    pdf_bytes = build_quiz_result_pdf(
+        quiz_title=quiz.title,
+        score=results.score,
+        gradable_questions=results.gradable_questions,
+        total_questions=results.total_questions,
+        answers=results.answers,
+    )
+
+    safe_title = "".join(
+        character
+        if character.isalnum() or character in {"-", "_"}
+        else "-"
+        for character in quiz.title
+    ).strip("-")
+
+    filename = (
+        f"{safe_title or 'quiz'}-results.pdf"
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{filename}"'
+            ),
+        },
     )
