@@ -9,6 +9,7 @@ import {
   Info,
   ListChecks,
   PenLine,
+  Pencil,
   Plus,
   Sparkles,
   Trash2,
@@ -176,6 +177,19 @@ function CreateQuizPage() {
   );
 
   const [newQuestionError, setNewQuestionError] = useState("");
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
+    null,
+  );
+
+  const [editingQuestionText, setEditingQuestionText] = useState("");
+
+  const [editingExpectedAnswer, setEditingExpectedAnswer] = useState("");
+
+  const [editingQuestionChoices, setEditingQuestionChoices] = useState<
+    NewQuestionChoice[]
+  >([]);
+
+  const [editingQuestionError, setEditingQuestionError] = useState("");
 
 
   useEffect(() => {
@@ -211,6 +225,128 @@ function CreateQuizPage() {
     setNewExpectedAnswer("");
     setNewQuestionChoices(defaultChoices);
     setNewQuestionError("");
+  };
+
+  const startEditingQuestion = (question: DraftQuestion) => {
+    setEditingQuestionId(question.id);
+    setEditingQuestionText(question.text);
+    setEditingExpectedAnswer(question.expected_answer);
+
+    setEditingQuestionChoices(
+      question.choices.map((choice) => ({
+        ...choice,
+      })),
+    );
+
+    setEditingQuestionError("");
+  };
+
+  const cancelEditingQuestion = () => {
+    setEditingQuestionId(null);
+    setEditingQuestionText("");
+    setEditingExpectedAnswer("");
+    setEditingQuestionChoices([]);
+    setEditingQuestionError("");
+  };
+
+  const updateEditingChoiceText = (
+    choiceId: string,
+    text: string,
+  ) => {
+    setEditingQuestionChoices((current) =>
+      current.map((choice) =>
+        choice.id === choiceId
+          ? {
+            ...choice,
+            text,
+          }
+          : choice,
+      ),
+    );
+
+    setEditingQuestionError("");
+  };
+
+  const setEditingCorrectChoice = (choiceId: string) => {
+    setEditingQuestionChoices((current) =>
+      current.map((choice) => ({
+        ...choice,
+        is_correct: choice.id === choiceId,
+      })),
+    );
+
+    setEditingQuestionError("");
+  };
+
+  const saveEditedQuestion = () => {
+    if (!editingQuestionId) {
+      return;
+    }
+
+    const question = questions.find(
+      (item) => item.id === editingQuestionId,
+    );
+
+    if (!question) {
+      return;
+    }
+
+    if (!editingQuestionText.trim()) {
+      setEditingQuestionError("Question text is required.");
+      return;
+    }
+
+    if (question.question_type === "multiple_choice") {
+      const filledChoices = editingQuestionChoices.filter(
+        (choice) => choice.text.trim(),
+      );
+
+      if (filledChoices.length < 2) {
+        setEditingQuestionError(
+          "Multiple-choice questions need at least two answers.",
+        );
+        return;
+      }
+
+      if (!filledChoices.some((choice) => choice.is_correct)) {
+        setEditingQuestionError("Choose the correct answer.");
+        return;
+      }
+    } else if (
+      question.question_type === "math_work" &&
+      !editingExpectedAnswer.trim()
+    ) {
+      setEditingQuestionError(
+        "Expected answer is required for a math question.",
+      );
+      return;
+    }
+
+    setQuestions((current) =>
+      current.map((item) =>
+        item.id === editingQuestionId
+          ? {
+            ...item,
+            text: editingQuestionText.trim(),
+            expected_answer:
+              item.question_type === "math_work"
+                ? editingExpectedAnswer.trim()
+                : "",
+            choices:
+              item.question_type === "multiple_choice"
+                ? editingQuestionChoices
+                  .filter((choice) => choice.text.trim())
+                  .map((choice) => ({
+                    ...choice,
+                    text: choice.text.trim(),
+                  }))
+                : [],
+          }
+          : item,
+      ),
+    );
+
+    cancelEditingQuestion();
   };
 
   const updateNewChoiceText = (choiceId: string, text: string) => {
@@ -601,6 +737,11 @@ function CreateQuizPage() {
     }
   };
 
+  const handleCancelQuiz = () => {
+    localStorage.removeItem(CREATE_QUIZ_DRAFT_KEY);
+    navigate("/dashboard");
+  };
+
   return (
     <div className="create-quiz-page">
       <header className="create-quiz-page__header">
@@ -946,7 +1087,7 @@ function CreateQuizPage() {
                   variant="secondary"
                   size="lg"
                   disabled={isSubmitting}
-                  onClick={() => navigate("/dashboard")}
+                  onClick={handleCancelQuiz}
                 >
                   Cancel
                 </Button>
@@ -994,38 +1135,210 @@ function CreateQuizPage() {
 
             {questions.length > 0 && (
               <div className="create-quiz-question-list">
-                {questions.map((question, index) => (
-                  <article
-                    className="create-quiz-question-card"
-                    key={question.id}
-                  >
-                    <div className="create-quiz-question-card__content">
-                      <div className="create-quiz-question-card__heading">
-                        <span>{index + 1}</span>
+                {questions.map((question, index) => {
+                  const isEditing = editingQuestionId === question.id;
 
-                        <div>
-                          <strong>{question.text}</strong>
-                          <small>
-                            {question.question_type === "multiple_choice"
-                              ? "Multiple choice"
-                              : question.question_type === "written_answer"
-                                ? "Written answer"
-                                : "Math work"}
-                          </small>
+                  return (
+                    <article
+                      className={`create-quiz-question-card ${isEditing ? "create-quiz-question-card--editing" : ""
+                        }`}
+                      key={question.id}
+                    >
+                      <div className="create-quiz-question-card__content">
+                        <div className="create-quiz-question-card__heading">
+                          <span>{index + 1}</span>
+
+                          <div>
+                            <strong>{question.text}</strong>
+                            <small>
+                              {question.question_type === "multiple_choice"
+                                ? "Multiple choice"
+                                : question.question_type === "written_answer"
+                                  ? "Written answer"
+                                  : "Math work"}
+                            </small>
+                          </div>
                         </div>
+
+                        {!isEditing && (
+                          <div className="create-quiz-question-card__actions">
+                            <button
+                              type="button"
+                              className="create-quiz-question-card__edit"
+                              aria-label={`Edit question ${index + 1}`}
+                              onClick={() => startEditingQuestion(question)}
+                            >
+                              <Pencil size={16} />
+                            </button>
+
+                            <button
+                              type="button"
+                              className="create-quiz-question-card__delete"
+                              aria-label={`Delete question ${index + 1}`}
+                              onClick={() => deleteDraftQuestion(question.id)}
+                            >
+                              <Trash2 size={17} />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
-                      <button
-                        type="button"
-                        className="create-quiz-question-card__delete"
-                        aria-label={`Delete question ${index + 1}`}
-                        onClick={() => deleteDraftQuestion(question.id)}
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                      {!isEditing && question.question_type === "multiple_choice" && (
+                        <div className="create-quiz-question-card__answers">
+                          {question.choices.map((choice, choiceIndex) => (
+                            <div
+                              key={choice.id}
+                              className={`create-quiz-question-card__answer ${choice.is_correct
+                                  ? "create-quiz-question-card__answer--correct"
+                                  : ""
+                                }`}
+                            >
+                              <span className="create-quiz-question-card__answer-letter">
+                                {String.fromCharCode(65 + choiceIndex)}
+                              </span>
+
+                              <span className="create-quiz-question-card__answer-text">
+                                {choice.text}
+                              </span>
+
+                              {choice.is_correct && (
+                                <span className="create-quiz-question-card__correct-label">
+                                  <Check size={14} />
+                                  Correct
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {!isEditing && question.question_type === "math_work" && (
+                        <div className="create-quiz-question-card__answers">
+                          <div className="create-quiz-question-card__expected-answer">
+                            <small>Expected answer</small>
+                            <span>{question.expected_answer}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {isEditing && (
+                        <div className="create-quiz-question-card__editor">
+                          {editingQuestionError && (
+                            <div className="create-quiz-form__error" role="alert">
+                              <Info size={18} />
+                              <span>{editingQuestionError}</span>
+                            </div>
+                          )}
+
+                          <div className="new-question-field">
+                            <label htmlFor={`edit-question-${question.id}`}>
+                              Question
+                            </label>
+
+                            <textarea
+                              id={`edit-question-${question.id}`}
+                              value={editingQuestionText}
+                              maxLength={2000}
+                              onChange={(event) => {
+                                setEditingQuestionText(event.target.value);
+                                setEditingQuestionError("");
+                              }}
+                            />
+
+                            <span className="new-question-field__count">
+                              {editingQuestionText.length}/2000
+                            </span>
+                          </div>
+
+                          {question.question_type === "multiple_choice" ? (
+                            <div className="new-question-choices">
+                              <div className="new-question-choices__heading">
+                                <div>
+                                  <strong>Answer choices</strong>
+                                  <span>Select the correct answer.</span>
+                                </div>
+                              </div>
+
+                              <div className="new-question-choices__list">
+                                {editingQuestionChoices.map((choice, choiceIndex) => (
+                                  <div
+                                    key={choice.id}
+                                    className={`new-question-choice ${choice.is_correct
+                                      ? "new-question-choice--correct"
+                                      : ""
+                                      }`}
+                                  >
+                                    <label className="new-question-choice__correct">
+                                      <input
+                                        type="radio"
+                                        name={`correct-answer-${question.id}`}
+                                        checked={choice.is_correct}
+                                        onChange={() =>
+                                          setEditingCorrectChoice(choice.id)
+                                        }
+                                      />
+
+                                      <span className="new-question-choice__number">
+                                        {String.fromCharCode(65 + choiceIndex)}
+                                      </span>
+                                    </label>
+
+                                    <input
+                                      type="text"
+                                      className="new-question-choice__input"
+                                      value={choice.text}
+                                      maxLength={500}
+                                      onChange={(event) =>
+                                        updateEditingChoiceText(
+                                          choice.id,
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : question.question_type === "math_work" ? (
+                            <div className="new-question-field">
+                              <label htmlFor={`edit-answer-${question.id}`}>
+                                Expected answer
+                              </label>
+
+                              <textarea
+                                id={`edit-answer-${question.id}`}
+                                value={editingExpectedAnswer}
+                                maxLength={2000}
+                                onChange={(event) => {
+                                  setEditingExpectedAnswer(event.target.value);
+                                  setEditingQuestionError("");
+                                }}
+                              />
+                            </div>
+                          ) : null}
+
+                          <div className="create-quiz-question-card__editor-actions">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={cancelEditingQuestion}
+                            >
+                              Cancel
+                            </Button>
+
+                            <Button
+                              type="button"
+                              onClick={saveEditedQuestion}
+                            >
+                              <Check size={16} />
+                              Save changes
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             )}
 
