@@ -1,20 +1,213 @@
 from sqlalchemy import select
+from unittest.mock import patch
+from datetime import datetime, timedelta, timezone
+from app.core.config import settings
+from app.services.email_service import EmailDeliveryError
+from app.core.security import hash_otp, hash_password
+
+from app.models.email_verification import EmailVerification
 
 from app.models.user import User
 from app.core.security import verify_password
-from app.models.user import User
 from app.core.config import settings
 
 import jwt
 
 
-def test_register_user_success(client):
+
+@patch(
+    "app.api.v1.auth.send_verification_email",
+    side_effect=EmailDeliveryError("SendGrid failed"),
+)
+def test_register_rolls_back_when_email_delivery_fails(
+    mock_send_email,
+    client,
+    db,
+):
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "display_name": "Delivery Failure User",
+            "email": "delivery-failure@example.com",
+            "password": "Testing123!",
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == (
+        "Unable to send verification email"
+    )
+
+    user = db.scalar(
+        select(User).where(
+            User.email == "delivery-failure@example.com"
+        )
+    )
+    assert user is None
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email
+            == "delivery-failure@example.com"
+        )
+    )
+    assert verification is None
+
+    mock_send_email.assert_called_once()
+
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_resend_preserves_verification_when_email_delivery_fails(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Resend Failure User",
+                "email": "resend-failure@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email
+            == "resend-failure@example.com"
+        )
+    )
+    assert verification is not None
+
+    verification.last_sent_at = (
+        datetime.now(timezone.utc)
+        - timedelta(
+            seconds=settings.email_otp_resend_cooldown_seconds + 1
+        )
+    )
+    db.commit()
+
+    original_otp_hash = verification.otp_hash
+    original_expires_at = verification.expires_at
+
+    mock_send_email.side_effect = EmailDeliveryError(
+        "SendGrid failed"
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="654321",
+    ):
+        response = client.post(
+            "/api/v1/auth/resend-verification",
+            json={
+                "email": "resend-failure@example.com",
+            },
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == (
+        "Unable to send verification email"
+    )
+
+    db.refresh(verification)
+
+    assert verification.otp_hash == original_otp_hash
+    assert verification.expires_at == original_expires_at
+
+    # The original code must still be usable.
+    verify_response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "resend-failure@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert verify_response.status_code == 201
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_register_creates_pending_email_verification(
+    mock_send_email,
+    client,
+    db,
+):
     response = client.post(
         "/api/v1/auth/register",
         json={
             "display_name": "Test User",
-            "email": "test@example.com",
+            "email": "pending@example.com",
             "password": "Testing123!",
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {
+        "email": "pending@example.com",
+        "message": "Verification code sent",
+    }
+
+    user = db.scalar(
+        select(User).where(User.email == "pending@example.com")
+    )
+    assert user is None
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "pending@example.com"
+        )
+    )
+
+    assert verification is not None
+    assert verification.display_name == "Test User"
+    assert verification.password_hash != "Testing123!"
+    assert verification.otp_hash
+    assert verification.attempt_count == 0
+
+    mock_send_email.assert_called_once()
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_verify_email_creates_user(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Verified User",
+                "email": "verified@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    user_before_verification = db.scalar(
+        select(User).where(
+            User.email == "verified@example.com"
+        )
+    )
+    assert user_before_verification is None
+
+    response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "verified@example.com",
+            "otp": "123456",
         },
     )
 
@@ -22,53 +215,480 @@ def test_register_user_success(client):
 
     data = response.json()
 
-    assert data["email"] == "test@example.com"
-    assert data["display_name"] == "Test User"
+    assert data["email"] == "verified@example.com"
+    assert data["display_name"] == "Verified User"
     assert data["is_active"] is True
     assert "id" in data
-    assert "created_at" in data
-
-    assert "password" not in data
     assert "password_hash" not in data
+
+    user = db.scalar(
+        select(User).where(
+            User.email == "verified@example.com"
+        )
+    )
+
+    assert user is not None
+    assert verify_password(
+        "Testing123!",
+        user.password_hash,
+    )
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "verified@example.com"
+        )
+    )
+
+    assert verification is None
+
+    mock_send_email.assert_called_once()
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_verify_email_rejects_invalid_otp(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Invalid OTP User",
+                "email": "invalid-otp@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "invalid-otp@example.com",
+            "otp": "654321",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid verification code"
+
+    user = db.scalar(
+        select(User).where(
+            User.email == "invalid-otp@example.com"
+        )
+    )
+    assert user is None
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "invalid-otp@example.com"
+        )
+    )
+
+    assert verification is not None
+    assert verification.attempt_count == 1
+
+    mock_send_email.assert_called_once()
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_verify_email_rejects_expired_otp(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Expired OTP User",
+                "email": "expired-otp@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "expired-otp@example.com"
+        )
+    )
+    assert verification is not None
+
+    verification.expires_at = datetime.now(timezone.utc) - timedelta(
+        minutes=1
+    )
+    db.commit()
+
+    response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "expired-otp@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Verification code has expired"
+
+    user = db.scalar(
+        select(User).where(
+            User.email == "expired-otp@example.com"
+        )
+    )
+    assert user is None
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_verify_email_blocks_after_max_attempts(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Locked OTP User",
+                "email": "locked-otp@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    for _ in range(settings.email_otp_max_attempts):
+        response = client.post(
+            "/api/v1/auth/verify-email",
+            json={
+                "email": "locked-otp@example.com",
+                "otp": "654321",
+            },
+        )
+
+        assert response.status_code == 400
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "locked-otp@example.com"
+        )
+    )
+    assert verification is not None
+    assert (
+        verification.attempt_count
+        == settings.email_otp_max_attempts
+    )
+
+    response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "locked-otp@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "Too many verification attempts"
+
+    user = db.scalar(
+        select(User).where(
+            User.email == "locked-otp@example.com"
+        )
+    )
+    assert user is None
+
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_resend_verification_enforces_cooldown(
+    mock_send_email,
+    client,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Cooldown User",
+                "email": "cooldown@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    response = client.post(
+        "/api/v1/auth/resend-verification",
+        json={
+            "email": "cooldown@example.com",
+        },
+    )
+
+    assert response.status_code == 429
+    assert "Please wait" in response.json()["detail"]
+    assert "before requesting another code" in response.json()["detail"]
+
+    # Only the original registration email should have been sent.
+    assert mock_send_email.call_count == 1
+
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_resend_verification_replaces_old_otp(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Resend User",
+                "email": "resend@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "resend@example.com"
+        )
+    )
+    assert verification is not None
+
+    verification.last_sent_at = (
+        datetime.now(timezone.utc)
+        - timedelta(
+            seconds=settings.email_otp_resend_cooldown_seconds + 1
+        )
+    )
+    db.commit()
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="654321",
+    ):
+        resend_response = client.post(
+            "/api/v1/auth/resend-verification",
+            json={
+                "email": "resend@example.com",
+            },
+        )
+
+    assert resend_response.status_code == 200
+    assert resend_response.json() == {
+        "email": "resend@example.com",
+        "message": "Verification code resent",
+    }
+
+    # The original code must no longer work.
+    old_code_response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "resend@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert old_code_response.status_code == 400
+    assert (
+        old_code_response.json()["detail"]
+        == "Invalid verification code"
+    )
+
+    # The newly generated code should work.
+    new_code_response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "resend@example.com",
+            "otp": "654321",
+        },
+    )
+
+    assert new_code_response.status_code == 201
+    assert new_code_response.json()["email"] == "resend@example.com"
+
+    assert mock_send_email.call_count == 2
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_register_user_success(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Test User",
+                "email": "test@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert response.status_code == 202
+
+    data = response.json()
+
+    assert data["email"] == "test@example.com"
+    assert data["message"] == "Verification code sent"
+
+    # Registration must not create the real account yet.
+    user = db.scalar(
+        select(User).where(User.email == "test@example.com")
+    )
+    assert user is None
+
+    # The verification email should have been requested once.
+    mock_send_email.assert_called_once_with(
+        to_email="test@example.com",
+        otp="123456",
+    )
 
 
 def test_register_duplicate_email(client):
-    payload = {
-        "display_name": "Test User",
-        "email": "duplicate@example.com",
-        "password": "Testing123!",
-    }
-
-    first_response = client.post(
-        "/api/v1/auth/register",
-        json=payload,
+    first_response = register_user(
+        client,
+        email="duplicate@example.com",
     )
 
     assert first_response.status_code == 201
 
-    second_response = client.post(
+    response = client.post(
         "/api/v1/auth/register",
-        json=payload,
+        json={
+            "display_name": "Another User",
+            "email": "duplicate@example.com",
+            "password": "Different123!",
+        },
     )
 
-    assert second_response.status_code == 409
-    assert second_response.json()["detail"] == (
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
         "An account with this email already exists"
     )
 
 
-def test_register_normalizes_email(client):
-    response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "display_name": "Test User",
-            "email": "TEST@EXAMPLE.COM",
-            "password": "Testing123!",
-        },
+@patch("app.api.v1.auth.send_verification_email")
+def test_register_again_updates_pending_verification(
+    mock_send_email,
+    client,
+    db,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        first_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Original Name",
+                "email": "pending-again@example.com",
+                "password": "Original123!",
+            },
+        )
+
+    assert first_response.status_code == 202
+
+    original = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "pending-again@example.com"
+        )
+    )
+    assert original is not None
+
+    original_id = original.id
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="654321",
+    ):
+        second_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Updated Name",
+                "email": "pending-again@example.com",
+                "password": "Updated123!",
+            },
+        )
+
+    assert second_response.status_code == 202
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "pending-again@example.com"
+        )
     )
 
-    assert response.status_code == 201
+    assert verification is not None
+    assert verification.id == original_id
+    assert verification.display_name == "Updated Name"
+    assert verification.attempt_count == 0
+
+    assert verify_password(
+        "Updated123!",
+        verification.password_hash,
+    )
+
+    assert not verify_password(
+        "Original123!",
+        verification.password_hash,
+    )
+
+    mock_send_email.assert_called_with(
+        to_email="pending-again@example.com",
+        otp="654321",
+    )
+    assert mock_send_email.call_count == 2
+
+
+@patch("app.api.v1.auth.send_verification_email")
+def test_register_normalizes_email(
+    mock_send_email,
+    client,
+):
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Test User",
+                "email": "TEST@EXAMPLE.COM",
+                "password": "Testing123!",
+            },
+        )
+
+    assert response.status_code == 202
     assert response.json()["email"] == "test@example.com"
+
+    mock_send_email.assert_called_once_with(
+        to_email="test@example.com",
+        otp="123456",
+    )
 
 
 def test_register_invalid_email(client):
@@ -110,27 +730,46 @@ def test_register_invalid_display_name(client):
     assert response.status_code == 422
 
 
-def test_registration_hashes_password(client, db):
+@patch("app.api.v1.auth.send_verification_email")
+def test_registration_hashes_password(
+    mock_send_email,
+    client,
+    db,
+):
     plain_password = "Testing123!"
 
-    response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "display_name": "Test User",
-            "email": "security@example.com",
-            "password": plain_password,
-        },
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Test User",
+                "email": "security@example.com",
+                "password": plain_password,
+            },
+        )
+
+    assert response.status_code == 202
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == "security@example.com"
+        )
     )
 
-    assert response.status_code == 201
+    assert verification is not None
 
-    user = db.scalar(
-        select(User).where(User.email == "security@example.com")
+    # Never store the registration password in plaintext.
+    assert verification.password_hash != plain_password
+
+    assert verify_password(
+        plain_password,
+        verification.password_hash,
     )
 
-    assert user is not None
-    assert user.password_hash != plain_password
-    assert verify_password(plain_password, user.password_hash) is True
+    mock_send_email.assert_called_once()
 
 
 def register_user(
@@ -138,14 +777,36 @@ def register_user(
     email="login@example.com",
     password="Testing123!",
 ):
-    return client.post(
-        "/api/v1/auth/register",
+    otp = "123456"
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value=otp,
+    ), patch(
+        "app.api.v1.auth.send_verification_email",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Test User",
+                "email": email,
+                "password": password,
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    verify_response = client.post(
+        "/api/v1/auth/verify-email",
         json={
-            "display_name": "Test User",
             "email": email,
-            "password": password,
+            "otp": otp,
         },
     )
+
+    assert verify_response.status_code == 201
+
+    return verify_response
 
 
 def test_login_success(client):

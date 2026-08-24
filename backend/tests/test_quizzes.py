@@ -1,21 +1,19 @@
 from sqlalchemy import select
 from app.models.audit_log import AuditLog
 import uuid
+from tests.conftest import register_verified_user
 
 def register_and_login(
     client,
     email="quiz@example.com",
     password="Testing123!",
 ):
-    register_response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "display_name": "Quiz User",
-            "email": email,
-            "password": password,
-        },
+    register_verified_user(
+        client,
+        email=email,
+        display_name="Quiz User",
+        password=password,
     )
-    assert register_response.status_code == 201
 
     login_response = client.post(
         "/api/v1/auth/login",
@@ -24,6 +22,7 @@ def register_and_login(
             "password": password,
         },
     )
+
     assert login_response.status_code == 200
 
     token = login_response.json()["access_token"]

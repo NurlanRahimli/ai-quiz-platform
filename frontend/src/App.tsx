@@ -6,6 +6,7 @@ import AppShell from "./components/layout/AppShell";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
+import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import CreateQuizPage from "./pages/quizzes/CreateQuizPage";
 import EditQuizPage from "./pages/quizzes/EditQuizPage";
@@ -77,6 +78,7 @@ function App() {
       <Route path="/" element={<Navigate to="/register" replace />} />
 
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
       <Route

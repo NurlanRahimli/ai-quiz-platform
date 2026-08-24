@@ -30,6 +30,37 @@ class UserRegister(BaseModel):
         return str(value).lower()
 
 
+class RegistrationPendingResponse(BaseModel):
+    email: EmailStr
+    message: str
+
+
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).lower()
+
+    @field_validator("otp")
+    @classmethod
+    def validate_otp(cls, value: str) -> str:
+        if not value.isdigit():
+            raise ValueError("Verification code must contain only digits")
+        return value
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).lower()
+
+
 class UserUpdate(BaseModel):
     display_name: str = Field(min_length=2, max_length=100)
 

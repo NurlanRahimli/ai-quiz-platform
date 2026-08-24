@@ -1,4 +1,5 @@
 import uuid
+from tests.conftest import register_verified_user
 
 from sqlalchemy import func, select
 
@@ -11,15 +12,12 @@ def register_and_login(
     email="attempt-user@example.com",
     password="Password123!",
 ):
-    register_response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "display_name": "Attempt User",
-        },
+    register_verified_user(
+        client,
+        email=email,
+        display_name="Attempt User",
+        password=password,
     )
-    assert register_response.status_code == 201
 
     login_response = client.post(
         "/api/v1/auth/login",
@@ -28,12 +26,13 @@ def register_and_login(
             "password": password,
         },
     )
+
     assert login_response.status_code == 200
 
     return {
         "Authorization": (
             f"Bearer {login_response.json()['access_token']}"
-        )
+        ),
     }
 
 
