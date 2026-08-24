@@ -1036,3 +1036,111 @@ def test_guest_attempt_does_not_create_audit_log(client, db):
     ).all()
 
     assert audit_logs == []
+
+
+def test_can_export_own_quiz_attempt_results_as_pdf(client):
+    headers = register_and_login(
+        client,
+        email="pdf-export@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    attempt_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert attempt_response.status_code == 201
+
+    attempt_id = attempt_response.json()["id"]
+
+    response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt_id}/results/pdf"
+        ),
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "attachment;" in response.headers["content-disposition"]
+    assert ".pdf" in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+    assert len(response.content) > 1000
+
+
+def test_cannot_export_another_users_quiz_attempt_results_pdf(client):
+    owner_headers = register_and_login(
+        client,
+        email="pdf-owner@example.com",
+    )
+    quiz = create_quiz_with_questions(client, owner_headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    attempt_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=owner_headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert attempt_response.status_code == 201
+    attempt_id = attempt_response.json()["id"]
+
+    other_user_headers = register_and_login(
+        client,
+        email="pdf-other-user@example.com",
+    )
+
+    response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt_id}/results/pdf"
+        ),
+        headers=other_user_headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Quiz attempt not found"

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleHelp,
+  Download,
   FileText,
   ListChecks,
   RefreshCw,
@@ -66,6 +67,7 @@ function QuizResultsPage() {
   const [results, setResults] = useState<QuizResults | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(
     new Set(),
   )
@@ -135,6 +137,39 @@ function QuizResultsPage() {
     results && !showAllQuestions
       ? results.answers.slice(0, INITIAL_VISIBLE_QUESTIONS)
       : results?.answers ?? []
+
+  const handleExportPdf = async () => {
+    if (!quizId || !attemptId || isGuestResult) {
+      return
+    }
+
+    setIsExportingPdf(true)
+
+    try {
+      const response = await apiClient.get(
+        `/quizzes/${quizId}/attempts/${attemptId}/results/pdf`,
+        {
+          responseType: "blob",
+        },
+      )
+
+      const pdfUrl = window.URL.createObjectURL(response.data)
+      const link = document.createElement("a")
+
+      link.href = pdfUrl
+      link.download = "quiz-results.pdf"
+
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+
+      window.URL.revokeObjectURL(pdfUrl)
+    } catch {
+      setError("Unable to export quiz results as PDF.")
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }
 
   const toggleQuestion = (questionId: string) => {
     setExpandedQuestions((current) => {
@@ -209,14 +244,28 @@ function QuizResultsPage() {
           {isGuestResult ? "Back to quiz" : "Back to attempt history"}
         </button>
 
-        <button
-          type="button"
-          className="results-secondary-button"
-          onClick={() => navigate(`/quizzes/${quizId}/take`)}
-        >
-          <RefreshCw size={17} />
-          Retake quiz
-        </button>
+        <div className="results-topbar-actions">
+          {attemptId && !isGuestResult && (
+            <button
+              type="button"
+              className="results-secondary-button"
+              onClick={() => void handleExportPdf()}
+              disabled={isExportingPdf}
+            >
+              <Download size={17} />
+              {isExportingPdf ? "Exporting..." : "Export PDF"}
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="results-secondary-button"
+            onClick={() => navigate(`/quizzes/${quizId}/take`)}
+          >
+            <RefreshCw size={17} />
+            Retake quiz
+          </button>
+        </div>
       </div>
 
       <section className="results-hero">
