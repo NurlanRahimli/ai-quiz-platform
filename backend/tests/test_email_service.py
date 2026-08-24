@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+import httpx
 import pytest
 
 from app.core.config import settings
@@ -16,17 +17,15 @@ def test_build_verification_email():
         otp="123456",
     )
 
-    assert message.subject.subject == "Your QuizApp verification code"
-
-    payload = message.get()
-
-    assert payload["from"]["email"] == settings.sendgrid_from_email
-    assert payload["from"]["name"] == settings.sendgrid_from_name
-    assert payload["personalizations"][0]["to"][0]["email"] == (
-        "user@example.com"
+    assert (
+        message["content"]["subject"]
+        == "Your QuizApp verification code"
     )
+    assert message["from"]["address"] == settings.twilio_from_email
+    assert message["from"]["name"] == settings.twilio_from_name
+    assert message["to"][0]["address"] == "user@example.com"
 
-    html_content = payload["content"][0]["value"]
+    html_content = message["content"]["html"]
 
     assert "123456" in html_content
     assert "Quiz" in html_content
@@ -37,12 +36,13 @@ def test_build_verification_email():
     )
 
 
-def test_send_verification_email_requires_api_key(monkeypatch):
-    monkeypatch.setattr(settings, "sendgrid_api_key", None)
+def test_send_verification_email_requires_credentials(monkeypatch):
+    monkeypatch.setattr(settings, "twilio_api_key_sid", None)
+    monkeypatch.setattr(settings, "twilio_api_key_secret", None)
 
     with pytest.raises(
         EmailDeliveryError,
-        match="SendGrid API key is not configured",
+        match="Twilio Email API credentials are not configured",
     ):
         send_verification_email(
             to_email="user@example.com",
@@ -50,54 +50,73 @@ def test_send_verification_email_requires_api_key(monkeypatch):
         )
 
 
-@patch("app.services.email_service.SendGridAPIClient")
+@patch("app.services.email_service.httpx.post")
 def test_send_verification_email_success(
-    mock_sendgrid_client,
+    mock_post,
     monkeypatch,
 ):
     monkeypatch.setattr(
         settings,
-        "sendgrid_api_key",
-        "test-api-key",
+        "twilio_api_key_sid",
+        "SK_test",
+    )
+    monkeypatch.setattr(
+        settings,
+        "twilio_api_key_secret",
+        "test-secret",
     )
 
     response = Mock()
     response.status_code = 202
-
-    client = Mock()
-    client.send.return_value = response
-    mock_sendgrid_client.return_value = client
+    mock_post.return_value = response
 
     send_verification_email(
         to_email="user@example.com",
         otp="123456",
     )
 
-    mock_sendgrid_client.assert_called_once_with("test-api-key")
-    client.send.assert_called_once()
+    mock_post.assert_called_once()
+
+    _, kwargs = mock_post.call_args
+
+    assert kwargs["auth"] == ("SK_test", "test-secret")
+    assert kwargs["timeout"] == 10.0
+
+    payload = kwargs["json"]
+
+    assert payload["from"]["address"] == settings.twilio_from_email
+    assert payload["from"]["name"] == settings.twilio_from_name
+    assert payload["to"][0]["address"] == "user@example.com"
+    assert (
+        payload["content"]["subject"]
+        == "Your QuizApp verification code"
+    )
+    assert "123456" in payload["content"]["html"]
 
 
-@patch("app.services.email_service.SendGridAPIClient")
+@patch("app.services.email_service.httpx.post")
 def test_send_verification_email_rejects_failed_response(
-    mock_sendgrid_client,
+    mock_post,
     monkeypatch,
 ):
     monkeypatch.setattr(
         settings,
-        "sendgrid_api_key",
-        "test-api-key",
+        "twilio_api_key_sid",
+        "SK_test",
+    )
+    monkeypatch.setattr(
+        settings,
+        "twilio_api_key_secret",
+        "test-secret",
     )
 
     response = Mock()
     response.status_code = 400
-
-    client = Mock()
-    client.send.return_value = response
-    mock_sendgrid_client.return_value = client
+    mock_post.return_value = response
 
     with pytest.raises(
         EmailDeliveryError,
-        match="SendGrid rejected the verification email",
+        match="Twilio Email rejected the verification email",
     ):
         send_verification_email(
             to_email="user@example.com",
@@ -105,20 +124,25 @@ def test_send_verification_email_rejects_failed_response(
         )
 
 
-@patch("app.services.email_service.SendGridAPIClient")
-def test_send_verification_email_handles_sendgrid_exception(
-    mock_sendgrid_client,
+@patch("app.services.email_service.httpx.post")
+def test_send_verification_email_handles_http_error(
+    mock_post,
     monkeypatch,
 ):
     monkeypatch.setattr(
         settings,
-        "sendgrid_api_key",
-        "test-api-key",
+        "twilio_api_key_sid",
+        "SK_test",
+    )
+    monkeypatch.setattr(
+        settings,
+        "twilio_api_key_secret",
+        "test-secret",
     )
 
-    client = Mock()
-    client.send.side_effect = RuntimeError("network failure")
-    mock_sendgrid_client.return_value = client
+    mock_post.side_effect = httpx.ConnectError(
+        "network failure",
+    )
 
     with pytest.raises(
         EmailDeliveryError,

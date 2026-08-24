@@ -11,6 +11,7 @@ from app.api.v1.users import router as users_router
 from app.core.config import settings
 from app.api.v1.audit_logs import router as audit_logs_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.ai import router as ai_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -34,7 +35,10 @@ app.include_router(
     audit_logs_router,
     prefix="/api/v1",
 )
-
+app.include_router(
+    ai_router,
+    prefix="/api/v1",
+)
 app.include_router(
     users_router,
     prefix="/api/v1",

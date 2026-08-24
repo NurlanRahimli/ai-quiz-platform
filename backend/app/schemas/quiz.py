@@ -11,7 +11,7 @@ class QuizCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=1000)
     category: str | None = Field(default=None, max_length=100)
-    tags: list[str] = Field(default_factory=list, max_length=5)
+    tags: list[str] = Field(default_factory=list, max_length=3)
     visibility: Literal["public", "unlisted"] = "unlisted"
 
     @field_validator("title")
@@ -61,7 +61,7 @@ class QuizUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
     visibility: Literal["public", "unlisted"] | None = None
     category: str | None = Field(default=None, max_length=100)
-    tags: list[str] | None = Field(default=None, max_length=5)
+    tags: list[str] | None = Field(default=None, max_length=3)
 
     @field_validator("title")
     @classmethod

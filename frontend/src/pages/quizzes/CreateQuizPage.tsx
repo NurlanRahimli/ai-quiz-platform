@@ -141,6 +141,10 @@ function CreateQuizPage() {
 
   const [errors, setErrors] = useState<QuizErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false);
+  const [categorySuggestionError, setCategorySuggestionError] = useState("");
+  const [isSuggestingTags, setIsSuggestingTags] = useState(false);
+  const [tagSuggestionError, setTagSuggestionError] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [questions, setQuestions] = useState<DraftQuestion[]>(
     initialDraft?.questions ?? [],
@@ -400,7 +404,7 @@ function CreateQuizPage() {
   const addTag = () => {
     const tag = tagInput.trim();
 
-    if (!tag || form.tags.length >= 5) {
+    if (!tag || form.tags.length >= 3) {
       return;
     }
 
@@ -419,6 +423,7 @@ function CreateQuizPage() {
     }));
 
     setTagInput("");
+    setTagSuggestionError("");
   };
 
   const removeTag = (tagToRemove: string) => {
@@ -426,6 +431,100 @@ function CreateQuizPage() {
       ...current,
       tags: current.tags.filter((tag) => tag !== tagToRemove),
     }));
+
+    setTagSuggestionError("");
+  };
+
+  const handleSuggestCategory = async () => {
+    const questionTexts = questions
+      .map((question) => question.text.trim())
+      .filter(Boolean);
+
+    if (questionTexts.length === 0) {
+      setCategorySuggestionError(
+        "Add at least one question before using AI suggestions.",
+      );
+      return;
+    }
+
+    setIsSuggestingCategory(true);
+    setCategorySuggestionError("");
+
+    try {
+      const response = await apiClient.post<{ category: string }>(
+        "/ai/suggest-category",
+        {
+          title: form.title.trim() || "Untitled Quiz",
+          description: form.description.trim() || null,
+          questions: questionTexts,
+        },
+      );
+
+      setForm((current) => ({
+        ...current,
+        category: response.data.category,
+      }));
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setCategorySuggestionError(
+          error.response?.data?.detail ??
+          "Unable to suggest a category right now.",
+        );
+      } else {
+        setCategorySuggestionError(
+          "Unable to suggest a category right now.",
+        );
+      }
+    } finally {
+      setIsSuggestingCategory(false);
+    }
+  };
+
+  const handleSuggestTags = async () => {
+    const questionTexts = questions
+      .map((question) => question.text.trim())
+      .filter(Boolean);
+
+    if (questionTexts.length === 0) {
+      setTagSuggestionError(
+        "Add at least one question before using AI suggestions.",
+      );
+      return;
+    }
+
+    setIsSuggestingTags(true);
+    setTagSuggestionError("");
+
+    try {
+      const response = await apiClient.post<{ tags: string[] }>(
+        "/ai/suggest-tags",
+        {
+          title: form.title.trim() || "Untitled Quiz",
+          description: form.description.trim() || null,
+          questions: questionTexts,
+        },
+      );
+
+      setForm((current) => ({
+        ...current,
+        tags: response.data.tags.slice(0, 3),
+      }));
+
+      setTagInput("");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setTagSuggestionError(
+          error.response?.data?.detail ??
+          "Unable to suggest tags right now.",
+        );
+      } else {
+        setTagSuggestionError(
+          "Unable to suggest tags right now.",
+        );
+      }
+    } finally {
+      setIsSuggestingTags(false);
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -607,8 +706,27 @@ function CreateQuizPage() {
 
                 <div className="create-quiz-form__field">
                   <div className="create-quiz-form__label-row">
-                    <label htmlFor="quiz-category">Category</label>
-                    <span>Optional</span>
+                    <div className="create-quiz-form__label-meta">
+                      <label htmlFor="quiz-category">Category</label>
+                      <span>Optional</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="create-quiz-ai-button"
+                      disabled={
+                        isSubmitting ||
+                        isSuggestingCategory ||
+                        questions.length === 0
+                      }
+                      onClick={handleSuggestCategory}
+                    >
+                      <Sparkles size={14} aria-hidden="true" />
+
+                      {isSuggestingCategory
+                        ? "Suggesting..."
+                        : "Suggest with AI"}
+                    </button>
                   </div>
 
                   <select
@@ -616,12 +734,13 @@ function CreateQuizPage() {
                     className="create-quiz-form__select"
                     value={form.category}
                     disabled={isSubmitting}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setForm((current) => ({
                         ...current,
                         category: event.target.value,
-                      }))
-                    }
+                      }));
+                      setCategorySuggestionError("");
+                    }}
                   >
                     <option value="">Select a category</option>
 
@@ -631,13 +750,42 @@ function CreateQuizPage() {
                       </option>
                     ))}
                   </select>
+                  {categorySuggestionError && (
+                    <p className="create-quiz-form__field-error" role="alert">
+                      {categorySuggestionError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="create-quiz-form__field">
                   <div className="create-quiz-form__label-row">
-                    <label htmlFor="quiz-tags">Tags</label>
-                    <span>{form.tags.length} / 5</span>
+                    <div className="create-quiz-form__label-meta">
+                      <label htmlFor="quiz-tags">Tags</label>
+                      <span>{form.tags.length} / 3</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="create-quiz-ai-button"
+                      disabled={
+                        isSubmitting ||
+                        isSuggestingTags ||
+                        questions.length === 0
+                      }
+                      onClick={handleSuggestTags}
+                    >
+                      <Sparkles size={14} aria-hidden="true" />
+
+                      {isSuggestingTags
+                        ? "Suggesting..."
+                        : "Suggest with AI"}
+                    </button>
                   </div>
+                  {tagSuggestionError && (
+                    <p className="create-quiz-form__field-error" role="alert">
+                      {tagSuggestionError}
+                    </p>
+                  )}
 
                   {form.tags.length > 0 && (
                     <div className="create-quiz-tags">
@@ -664,10 +812,10 @@ function CreateQuizPage() {
                       type="text"
                       value={tagInput}
                       maxLength={50}
-                      disabled={isSubmitting || form.tags.length >= 5}
+                      disabled={isSubmitting || form.tags.length >= 3}
                       placeholder={
-                        form.tags.length >= 5
-                          ? "Maximum 5 tags"
+                        form.tags.length >= 3
+                          ? "Maximum 3 tags"
                           : "Add a tag..."
                       }
                       onChange={(event) => setTagInput(event.target.value)}
@@ -683,7 +831,7 @@ function CreateQuizPage() {
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={!tagInput.trim() || form.tags.length >= 5}
+                      disabled={!tagInput.trim() || form.tags.length >= 3}
                       onClick={addTag}
                     >
                       Add
