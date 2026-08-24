@@ -13,7 +13,11 @@ import {
   X,
   XCircle,
 } from "lucide-react"
-import { useNavigate, useParams } from "react-router-dom"
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom"
 
 import apiClient from "../../api/client"
 import "../../styles/pages/quizzes/QuizResultsPage.css"
@@ -37,7 +41,7 @@ type AnswerResult = {
 }
 
 type QuizResults = {
-  attempt_id: string
+  attempt_id?: string
   quiz_id: string
   score: number
   gradable_questions: number
@@ -45,11 +49,19 @@ type QuizResults = {
   answers: AnswerResult[]
 }
 
+
 const INITIAL_VISIBLE_QUESTIONS = 5
 
 function QuizResultsPage() {
   const { quizId, attemptId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const guestResults =
+    (location.state as { guestResults?: QuizResults } | null)
+      ?.guestResults ?? null
+
+  const isGuestResult = guestResults !== null
 
   const [results, setResults] = useState<QuizResults | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -61,6 +73,12 @@ function QuizResultsPage() {
 
   useEffect(() => {
     const loadResults = async () => {
+      if (guestResults) {
+        setResults(guestResults)
+        setIsLoading(false)
+        return
+      }
+
       if (!quizId || !attemptId) {
         setError("Quiz results not found.")
         setIsLoading(false)
@@ -88,7 +106,7 @@ function QuizResultsPage() {
     }
 
     void loadResults()
-  }, [quizId, attemptId])
+  }, [quizId, attemptId, guestResults])
 
   const incorrectCount = useMemo(
     () =>
@@ -109,8 +127,8 @@ function QuizResultsPage() {
   const scorePercentage =
     results && results.gradable_questions > 0
       ? Math.round(
-          (results.score / results.gradable_questions) * 100,
-        )
+        (results.score / results.gradable_questions) * 100,
+      )
       : 0
 
   const visibleAnswers =
@@ -181,10 +199,14 @@ function QuizResultsPage() {
         <button
           type="button"
           className="results-back-button"
-          onClick={() => navigate(`/quizzes/${quizId}/history`)}
+          onClick={() =>
+            isGuestResult
+              ? navigate(`/quizzes/${quizId}`)
+              : navigate(`/quizzes/${quizId}/history`)
+          }
         >
           <ArrowLeft size={18} />
-          Back to attempt history
+          {isGuestResult ? "Back to quiz" : "Back to attempt history"}
         </button>
 
         <button
@@ -316,11 +338,10 @@ function QuizResultsPage() {
         </div>
 
         <div
-          className={`results-question-list ${
-            showAllQuestions
-              ? "results-question-list--scrollable"
-              : ""
-          }`}
+          className={`results-question-list ${showAllQuestions
+            ? "results-question-list--scrollable"
+            : ""
+            }`}
         >
           {visibleAnswers.map((answer, index) => {
             const isExpanded = expandedQuestions.has(
@@ -329,13 +350,12 @@ function QuizResultsPage() {
 
             return (
               <article
-                className={`result-accordion ${
-                  answer.is_correct === true
-                    ? "result-accordion--correct"
-                    : answer.is_correct === false
-                      ? "result-accordion--incorrect"
-                      : "result-accordion--ungraded"
-                }`}
+                className={`result-accordion ${answer.is_correct === true
+                  ? "result-accordion--correct"
+                  : answer.is_correct === false
+                    ? "result-accordion--incorrect"
+                    : "result-accordion--ungraded"
+                  }`}
                 key={answer.question_id}
               >
                 <button
@@ -377,11 +397,10 @@ function QuizResultsPage() {
                   </span>
 
                   <ChevronDown
-                    className={`result-chevron ${
-                      isExpanded
-                        ? "result-chevron--expanded"
-                        : ""
-                    }`}
+                    className={`result-chevron ${isExpanded
+                      ? "result-chevron--expanded"
+                      : ""
+                      }`}
                     size={19}
                   />
                 </button>
@@ -389,13 +408,13 @@ function QuizResultsPage() {
                 {isExpanded && (
                   <div className="result-accordion-content">
                     {answer.question_type ===
-                    "multiple_choice" ? (
+                      "multiple_choice" ? (
                       <div className="result-choice-list">
                         {answer.answer_choices.map(
                           (choice) => {
                             const choiceState =
                               choice.was_selected &&
-                              choice.is_correct
+                                choice.is_correct
                                 ? "correct-selected"
                                 : choice.was_selected
                                   ? "incorrect-selected"
@@ -420,7 +439,7 @@ function QuizResultsPage() {
 
                                 <span className="result-choice-label">
                                   {choice.was_selected &&
-                                  choice.is_correct
+                                    choice.is_correct
                                     ? "Your answer"
                                     : choice.was_selected
                                       ? "Your answer"
@@ -470,27 +489,27 @@ function QuizResultsPage() {
 
         {results.answers.length >
           INITIAL_VISIBLE_QUESTIONS && (
-          <button
-            type="button"
-            className="results-show-all"
-            onClick={() =>
-              setShowAllQuestions((current) => !current)
-            }
-          >
-            {showAllQuestions
-              ? "Show fewer questions"
-              : `Show all ${results.answers.length} questions`}
-
-            <ChevronDown
-              className={
-                showAllQuestions
-                  ? "results-show-all-chevron--expanded"
-                  : ""
+            <button
+              type="button"
+              className="results-show-all"
+              onClick={() =>
+                setShowAllQuestions((current) => !current)
               }
-              size={18}
-            />
-          </button>
-        )}
+            >
+              {showAllQuestions
+                ? "Show fewer questions"
+                : `Show all ${results.answers.length} questions`}
+
+              <ChevronDown
+                className={
+                  showAllQuestions
+                    ? "results-show-all-chevron--expanded"
+                    : ""
+                }
+                size={18}
+              />
+            </button>
+          )}
       </section>
 
       <section className="results-footer-card">

@@ -58,6 +58,14 @@ class QuizAttemptResultResponse(BaseModel):
     answers: list[QuizAttemptResultAnswer]
 
 
+class GuestQuizAttemptResultResponse(BaseModel):
+    quiz_id: uuid.UUID
+    score: int
+    gradable_questions: int
+    total_questions: int
+    answers: list[QuizAttemptResultAnswer]
+
+
 class QuizAttemptHistoryItem(BaseModel):
     attempt_id: uuid.UUID
     submitted_at: datetime

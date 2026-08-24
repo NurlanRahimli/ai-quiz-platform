@@ -273,7 +273,6 @@ def get_discovery_overview(
 def take_quiz(
     quiz_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ) -> Quiz:
     quiz = db.scalar(
         select(Quiz)
@@ -300,7 +299,6 @@ def take_quiz(
 def get_quiz(
     quiz_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ) -> QuizLandingResponse:
     quiz = db.scalar(
         select(Quiz).where(Quiz.id == quiz_id)

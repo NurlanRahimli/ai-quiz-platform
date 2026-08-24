@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./auth/useAuth";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 import AppShell from "./components/layout/AppShell";
@@ -19,15 +20,32 @@ import PublicProfilePage from "./pages/profile/PublicProfilePage"
 import AuditLogPage from "./pages/audit/AuditLogPage";
 import MyAttemptsPage from "./pages/attempts/MyAttemptsPage";
 
+
+function QuizDetailsLayout() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (isAuthenticated) {
+    return (
+      <AppShell>
+        <QuizDetailsPage />
+      </AppShell>
+    );
+  }
+
+  return <QuizDetailsPage />;
+}
+
+
 function ProtectedAppLayout() {
   return (
     <AppShell>
       <Routes>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/quizzes/new" element={<CreateQuizPage />} />
-        <Route path="/quizzes/:quizId" element={<QuizDetailsPage />} />
         <Route path="/quizzes/edit/:quizId" element={<EditQuizPage />} />
-        <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/audit-log" element={<AuditLogPage />} />
         <Route path="/attempts" element={<MyAttemptsPage />} />
@@ -60,6 +78,29 @@ function App() {
 
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
+      <Route
+        path="/quizzes/:quizId/guest-results"
+        element={<QuizResultsPage />}
+      />
+      <Route
+        path="/quizzes/:quizId"
+        element={<QuizDetailsLayout />}
+      />
+      <Route element={<ProtectedRoute />}>
+        <Route
+          path="/quizzes/new"
+          element={
+            <AppShell>
+              <CreateQuizPage />
+            </AppShell>
+          }
+        />
+
+        <Route path="/*" element={<ProtectedAppLayout />} />
+      </Route>
+
+
 
       <Route element={<ProtectedRoute />}>
         <Route path="/*" element={<ProtectedAppLayout />} />

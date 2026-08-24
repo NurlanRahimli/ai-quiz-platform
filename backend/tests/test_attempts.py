@@ -1,8 +1,9 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.models.audit_log import AuditLog
+from app.models.quiz_attempt import QuizAttempt
 
 
 def register_and_login(
@@ -796,3 +797,242 @@ def test_submit_quiz_attempt_records_completion_audit(client, db):
     assert audit_log.quiz_title == "Quiz Attempt Test"
     assert audit_log.creator_name == "Attempt User"
     assert audit_log.created_at is not None
+
+
+def test_guest_can_submit_quiz_without_persisting_attempt(client, db):
+    creator_headers = register_and_login(
+        client,
+        email="guest-attempt-creator@example.com",
+    )
+    quiz = create_quiz_with_questions(
+        client,
+        creator_headers,
+    )
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    attempts_before = db.scalar(
+        select(func.count(QuizAttempt.id))
+    ) or 0
+
+    audit_logs_before = db.scalar(
+        select(func.count(AuditLog.id))
+    ) or 0
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts/guest",
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["quiz_id"] == quiz["quiz_id"]
+    assert data["total_questions"] == 3
+    assert len(data["answers"]) == 3
+
+    # Guest responses intentionally have no persistent attempt ID.
+    assert "attempt_id" not in data
+
+    attempts_after = db.scalar(
+        select(func.count(QuizAttempt.id))
+    ) or 0
+
+    audit_logs_after = db.scalar(
+        select(func.count(AuditLog.id))
+    ) or 0
+
+    assert attempts_after == attempts_before
+    assert audit_logs_after == audit_logs_before
+
+
+def test_guest_attempt_requires_every_quiz_question(client):
+    creator_headers = register_and_login(
+        client,
+        email="guest-incomplete-creator@example.com",
+    )
+    quiz = create_quiz_with_questions(
+        client,
+        creator_headers,
+    )
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts/guest",
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "An answer must be provided for every quiz question"
+    )
+
+
+def test_guest_can_submit_quiz_without_authentication(client):
+    creator_headers = register_and_login(
+        client,
+        email="guest-quiz-creator@example.com",
+    )
+    quiz = create_quiz_with_questions(client, creator_headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts/guest",
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["quiz_id"] == quiz["quiz_id"]
+    assert "attempt_id" not in data
+    assert data["total_questions"] == 3
+    assert len(data["answers"]) == 3
+
+
+def test_guest_attempt_is_not_persisted(client, db):
+    creator_headers = register_and_login(
+        client,
+        email="guest-no-persist-creator@example.com",
+    )
+    quiz = create_quiz_with_questions(client, creator_headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    attempts_before = db.scalars(
+        select(QuizAttempt).where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz["quiz_id"])
+        )
+    ).all()
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts/guest",
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": None,
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+
+    attempts_after = db.scalars(
+        select(QuizAttempt).where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz["quiz_id"])
+        )
+    ).all()
+
+    assert len(attempts_after) == len(attempts_before)
+
+
+def test_guest_attempt_does_not_create_audit_log(client, db):
+    creator_headers = register_and_login(
+        client,
+        email="guest-no-audit-creator@example.com",
+    )
+    quiz = create_quiz_with_questions(client, creator_headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts/guest",
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": None,
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+
+    audit_logs = db.scalars(
+        select(AuditLog).where(
+            AuditLog.quiz_id == uuid.UUID(quiz["quiz_id"]),
+            AuditLog.action == "quiz_completed",
+        )
+    ).all()
+
+    assert audit_logs == []
