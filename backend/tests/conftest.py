@@ -2,9 +2,53 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from unittest.mock import patch
 
 from app.core.database import Base, get_db
 from app.main import app
+
+def register_verified_user(
+    client,
+    *,
+    email: str,
+    display_name: str,
+    password: str,
+):
+    otp = "123456"
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value=otp,
+    ), patch(
+        "app.api.v1.auth.send_verification_email",
+    ):
+        register_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": email,
+                "password": password,
+                "display_name": display_name,
+            },
+        )
+
+    assert register_response.status_code == 202
+
+    verify_response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": email,
+            "otp": otp,
+        },
+    )
+
+    assert verify_response.status_code == 201
+
+    return verify_response.json()
+
+
+@pytest.fixture
+def register_verified_user_helper():
+    return register_verified_user
 
 
 TEST_DATABASE_URL = "sqlite+pysqlite:///:memory:"

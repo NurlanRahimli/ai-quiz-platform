@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.models.quiz_attempt import QuizAttempt
+from tests.conftest import register_verified_user
 
 
 def set_attempt_submitted_at(
@@ -28,15 +29,12 @@ def register_and_login(
     display_name: str,
     password: str = "Password123!",
 ):
-    register_response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "display_name": display_name,
-        },
+    register_verified_user(
+        client,
+        email=email,
+        display_name=display_name,
+        password=password,
     )
-    assert register_response.status_code == 201
 
     login_response = client.post(
         "/api/v1/auth/login",
@@ -45,6 +43,7 @@ def register_and_login(
             "password": password,
         },
     )
+
     assert login_response.status_code == 200
 
     return {

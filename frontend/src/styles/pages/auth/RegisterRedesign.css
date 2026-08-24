@@ -1,0 +1,1303 @@
+.register-page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(500px, 0.9fr) minmax(620px, 1.1fr);
+    overflow: hidden;
+    background: #030617;
+}
+
+/* =========================================================
+   LEFT SHOWCASE
+   ========================================================= */
+
+.register-showcase {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 79% 59%,
+            rgba(109, 40, 217, 0.13),
+            transparent 24%),
+        radial-gradient(circle at 38% 88%,
+            rgba(91, 33, 182, 0.15),
+            transparent 32%),
+        linear-gradient(145deg,
+            #020414 0%,
+            #03051a 48%,
+            #05051d 100%);
+}
+
+.register-showcase::before {
+    content: "";
+    position: absolute;
+    inset: 27% -10% 0 35%;
+    pointer-events: none;
+    opacity: 0.18;
+    background-image:
+        linear-gradient(rgba(124, 58, 237, 0.18) 1px,
+            transparent 1px),
+        linear-gradient(90deg,
+            rgba(124, 58, 237, 0.18) 1px,
+            transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(ellipse at center,
+            black 0%,
+            transparent 70%);
+}
+
+.register-showcase__glow {
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+    filter: blur(30px);
+}
+
+.register-showcase__glow--one {
+    width: 320px;
+    height: 320px;
+    right: -120px;
+    top: 26%;
+    background: rgba(91, 33, 182, 0.12);
+}
+
+.register-showcase__glow--two {
+    width: 420px;
+    height: 260px;
+    left: 18%;
+    bottom: -120px;
+    background: rgba(124, 58, 237, 0.18);
+}
+
+.register-showcase__stars {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.register-showcase__stars span {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #8b5cf6;
+    box-shadow:
+        0 0 8px #8b5cf6,
+        0 0 18px rgba(139, 92, 246, 0.7);
+}
+
+.register-showcase__stars span:nth-child(1) {
+    top: 48%;
+    left: 68%;
+}
+
+.register-showcase__stars span:nth-child(2) {
+    top: 54%;
+    left: 84%;
+}
+
+.register-showcase__stars span:nth-child(3) {
+    top: 61%;
+    left: 73%;
+}
+
+.register-showcase__stars span:nth-child(4) {
+    top: 67%;
+    left: 90%;
+}
+
+.register-showcase__stars span:nth-child(5) {
+    top: 73%;
+    left: 64%;
+}
+
+.register-showcase__stars span:nth-child(6) {
+    top: 39%;
+    left: 91%;
+}
+
+.register-showcase__content {
+    position: relative;
+    z-index: 2;
+    width: min(100%, 650px);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 42px clamp(42px, 5vw, 72px) 26px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   BRAND
+   ========================================================= */
+
+.register-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    width: fit-content;
+}
+
+.register-brand__logo {
+    width: 48px;
+    height: 48px;
+    display: block;
+    object-fit: contain;
+}
+
+.register-brand-name {
+    display: inline-flex;
+    align-items: center;
+    color: #ffffff;
+    font-size: 29px;
+    font-weight: 780;
+    letter-spacing: -0.045em;
+}
+
+.register-brand-name strong {
+    color: #9b5cff;
+    font: inherit;
+}
+
+/* =========================================================
+   BADGE + HEADLINE
+   ========================================================= */
+
+.register-showcase__badge {
+    width: fit-content;
+    margin-top: 28px;
+    padding: 8px 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(139, 92, 246, 0.18);
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.11);
+    color: #a970ff;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow:
+        inset 0 0 20px rgba(124, 58, 237, 0.04),
+        0 0 28px rgba(124, 58, 237, 0.04);
+}
+
+.register-showcase__badge span {
+    color: #a855f7;
+}
+
+.register-showcase__copy {
+    margin-top: 21px;
+    max-width: 510px;
+}
+
+.register-showcase__copy h1 {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(42px, 4vw, 54px);
+    line-height: 1.03;
+    letter-spacing: -0.045em;
+    font-weight: 780;
+}
+
+.register-showcase__copy h1 span {
+    display: block;
+}
+
+.register-title-white {
+    color: #ffffff;
+}
+
+.register-showcase__copy h1 .register-title-purple {
+    margin-top: 4px;
+    color: #8b5cf6;
+}
+
+.register-showcase__copy>p {
+    max-width: 440px;
+    margin: 18px 0 0;
+    color: rgba(226, 224, 240, 0.72);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+/* =========================================================
+   FEATURES
+   ========================================================= */
+
+.register-features {
+    margin-top: 26px;
+    display: grid;
+    gap: 17px;
+}
+
+.register-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.register-feature__icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(167, 139, 250, 0.13);
+    border-radius: 8px;
+    background:
+        linear-gradient(145deg,
+            rgba(124, 58, 237, 0.95),
+            rgba(76, 29, 149, 0.92));
+    color: #ffffff;
+    box-shadow:
+        0 8px 20px rgba(76, 29, 149, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.register-feature strong {
+    display: block;
+    margin: 0 0 3px;
+    color: #f8f7ff;
+    font-size: 13px;
+    line-height: 1.25;
+    font-weight: 750;
+}
+
+.register-feature p {
+    margin: 0;
+    color: rgba(220, 217, 234, 0.66);
+    font-size: 11.5px;
+    line-height: 1.5;
+}
+
+/* =========================================================
+   LAPTOP / TROPHY ILLUSTRATION
+   ========================================================= */
+
+.register-illustration {
+    position: absolute;
+    z-index: 2;
+    width: 470px;
+    height: 315px;
+    right: -16px;
+    bottom: 9px;
+    pointer-events: none;
+}
+
+.register-illustration__platform {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    transform: rotate(-4deg);
+}
+
+.register-illustration__platform--back {
+    width: 430px;
+    height: 112px;
+    right: 7px;
+    bottom: 7px;
+    background:
+        radial-gradient(ellipse at center,
+            rgba(109, 40, 217, 0.28),
+            rgba(35, 12, 77, 0.4) 52%,
+            rgba(4, 5, 25, 0.3) 72%);
+    box-shadow:
+        0 0 35px rgba(124, 58, 237, 0.16),
+        inset 0 0 35px rgba(124, 58, 237, 0.12);
+}
+
+.register-illustration__platform--front {
+    width: 350px;
+    height: 76px;
+    right: 48px;
+    bottom: 19px;
+    border-color: rgba(168, 85, 247, 0.42);
+    box-shadow:
+        0 0 24px rgba(124, 58, 237, 0.22),
+        inset 0 0 30px rgba(124, 58, 237, 0.13);
+}
+
+/* laptop */
+
+.register-laptop {
+    position: absolute;
+    width: 300px;
+    height: 215px;
+    right: 73px;
+    bottom: 51px;
+    transform:
+        perspective(700px) rotateY(-7deg) rotateZ(-1deg);
+}
+
+.register-laptop__screen {
+    position: relative;
+    width: 255px;
+    height: 174px;
+    margin: 0 auto;
+    padding: 13px;
+    overflow: hidden;
+    border: 3px solid #1b1740;
+    border-radius: 9px 9px 5px 5px;
+    background: #08091c;
+    box-shadow:
+        0 0 0 1px rgba(139, 92, 246, 0.2),
+        0 15px 35px rgba(0, 0, 0, 0.45),
+        0 0 32px rgba(124, 58, 237, 0.12);
+}
+
+.register-laptop__camera {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #312e55;
+    transform: translateX(-50%);
+}
+
+.register-dashboard {
+    height: 100%;
+    padding: 13px;
+    border-radius: 5px;
+    background:
+        linear-gradient(145deg,
+            rgba(22, 18, 53, 0.95),
+            rgba(12, 10, 35, 0.98));
+}
+
+.register-dashboard__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.register-dashboard__header small {
+    color: rgba(255, 255, 255, 0.42);
+    font-size: 6px;
+}
+
+.register-dashboard__content {
+    height: calc(100% - 15px);
+    padding-top: 14px;
+    display: grid;
+    grid-template-columns: 1.45fr 0.65fr;
+    gap: 8px;
+}
+
+.register-progress-chart {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(139, 92, 246, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.register-progress-ring {
+    position: absolute;
+    left: 12px;
+    top: 25px;
+    width: 54px;
+    height: 54px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at center,
+            #11102c 55%,
+            transparent 57%),
+        conic-gradient(#8b5cf6 0 78%,
+            rgba(139, 92, 246, 0.14) 78% 100%);
+    color: #ffffff;
+    font-size: 11px;
+}
+
+.register-progress-line {
+    position: absolute;
+    width: 88px;
+    height: 60px;
+    right: 2px;
+    bottom: 14px;
+    color: #8b5cf6;
+}
+
+.register-progress-line svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.45));
+}
+
+.register-weekly-chart {
+    position: relative;
+    padding: 11px 7px;
+    overflow: hidden;
+    border: 1px solid rgba(139, 92, 246, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.register-weekly-chart strong {
+    display: block;
+    color: #d8d2ff;
+    font-size: 11px;
+}
+
+.register-weekly-chart>span {
+    display: block;
+    margin-top: 2px;
+    color: rgba(255, 255, 255, 0.38);
+    font-size: 6px;
+}
+
+.register-weekly-bars {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 10px;
+    height: 56px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.register-weekly-bars i {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    background: linear-gradient(to top,
+            #6d28d9,
+            #a855f7);
+    box-shadow: 0 0 6px rgba(139, 92, 246, 0.25);
+}
+
+.register-weekly-bars i:nth-child(1) {
+    height: 34%;
+}
+
+.register-weekly-bars i:nth-child(2) {
+    height: 55%;
+}
+
+.register-weekly-bars i:nth-child(3) {
+    height: 72%;
+}
+
+.register-weekly-bars i:nth-child(4) {
+    height: 92%;
+}
+
+.register-laptop__base {
+    position: relative;
+    width: 295px;
+    height: 58px;
+    margin: -1px auto 0;
+    border-radius: 2px 2px 13px 13px;
+    background:
+        linear-gradient(165deg,
+            #1e1945 0%,
+            #100d2d 55%,
+            #08081c 100%);
+    clip-path: polygon(12% 0,
+            88% 0,
+            100% 78%,
+            91% 100%,
+            9% 100%,
+            0 78%);
+    box-shadow:
+        0 14px 18px rgba(0, 0, 0, 0.4),
+        0 0 15px rgba(124, 58, 237, 0.12);
+}
+
+.register-laptop__keyboard {
+    width: 170px;
+    padding-top: 9px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+}
+
+.register-laptop__keyboard span {
+    height: 5px;
+    border-radius: 1px;
+    background: rgba(167, 139, 250, 0.16);
+}
+
+/* trophy */
+
+.register-trophy {
+    position: absolute;
+    z-index: 4;
+    width: 90px;
+    height: 120px;
+    left: 12px;
+    bottom: 37px;
+    filter:
+        drop-shadow(0 10px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 10px rgba(139, 92, 246, 0.25));
+}
+
+.register-trophy__cup {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    left: 18px;
+    width: 58px;
+    height: 59px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(216, 180, 254, 0.4);
+    border-radius: 9px 9px 24px 24px;
+    background:
+        linear-gradient(145deg,
+            #9b5cff,
+            #6d28d9 58%,
+            #4c1d95);
+    color: #e9d5ff;
+    box-shadow:
+        inset 6px 5px 12px rgba(255, 255, 255, 0.14),
+        inset -7px -7px 12px rgba(30, 8, 72, 0.28);
+}
+
+.register-trophy__handle {
+    position: absolute;
+    top: 10px;
+    width: 28px;
+    height: 35px;
+    border: 5px solid #6d28d9;
+    border-radius: 50%;
+}
+
+.register-trophy__handle--left {
+    left: 2px;
+}
+
+.register-trophy__handle--right {
+    right: -2px;
+}
+
+.register-trophy__stem {
+    position: absolute;
+    width: 11px;
+    height: 31px;
+    top: 53px;
+    left: 42px;
+    background: linear-gradient(to bottom,
+            #7c3aed,
+            #4c1d95);
+}
+
+.register-trophy__base {
+    position: absolute;
+    width: 57px;
+    height: 16px;
+    left: 20px;
+    bottom: 16px;
+    border-radius: 50%;
+    background: linear-gradient(to bottom,
+            #7c3aed,
+            #3b1675);
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+}
+
+/* floating cards */
+
+.register-stat-card {
+    position: absolute;
+    z-index: 5;
+    padding: 11px 12px;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    border-radius: 8px;
+    background:
+        linear-gradient(145deg,
+            rgba(29, 20, 65, 0.96),
+            rgba(13, 11, 39, 0.97));
+    color: #ffffff;
+    box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.3),
+        0 0 18px rgba(124, 58, 237, 0.08);
+}
+
+.register-stat-card>span {
+    display: block;
+    margin-bottom: 9px;
+    color: rgba(225, 220, 245, 0.58);
+    font-size: 8px;
+}
+
+.register-stat-card>div {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #9b5cff;
+}
+
+.register-stat-card strong {
+    color: #e9e5ff;
+    font-size: 15px;
+}
+
+.register-stat-card--badges {
+    width: 105px;
+    right: 0;
+    bottom: 147px;
+    transform: rotate(6deg);
+}
+
+.register-stat-card--subject {
+    width: 111px;
+    right: 5px;
+    bottom: 72px;
+    transform: rotate(7deg);
+}
+
+.register-stat-card--subject strong {
+    font-size: 10px;
+}
+
+/* =========================================================
+   RIGHT SIDE
+   ========================================================= */
+
+.register-form-panel {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 42px clamp(34px, 5vw, 78px);
+    background:
+        radial-gradient(circle at 55% 35%,
+            rgba(31, 41, 86, 0.12),
+            transparent 42%),
+        #030817;
+}
+
+.register-form-card {
+    width: 100%;
+    max-width: 720px;
+    padding: clamp(42px, 5vh, 58px) clamp(48px, 5vw, 66px) 34px;
+    border: 1px solid rgba(122, 113, 184, 0.28);
+    border-radius: 14px;
+    background:
+        linear-gradient(145deg,
+            rgba(5, 12, 31, 0.76),
+            rgba(3, 8, 24, 0.92));
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.018),
+        0 30px 80px rgba(0, 0, 0, 0.1);
+}
+
+.register-form-container {
+    width: 100%;
+    max-width: 590px;
+    margin: 0 auto;
+}
+
+.register-mobile-brand {
+    display: none;
+}
+
+/* =========================================================
+   FORM HEADING
+   ========================================================= */
+
+.register-heading {
+    margin-bottom: 34px;
+    text-align: center;
+}
+
+.register-heading__eyebrow {
+    display: block;
+    margin-bottom: 14px;
+    color: #9b5cff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+}
+
+.register-heading h2 {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(31px, 3vw, 39px);
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+    font-weight: 760;
+}
+
+.register-heading p {
+    margin: 12px 0 0;
+    color: rgba(218, 216, 232, 0.65);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.register-form {
+    display: grid;
+    gap: 21px;
+}
+
+.register-field label {
+    display: block;
+    margin-bottom: 8px;
+    color: rgba(246, 245, 255, 0.9);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.register-input-wrap {
+    position: relative;
+}
+
+.register-input-icon {
+    position: absolute;
+    z-index: 2;
+    left: 16px;
+    top: 50%;
+    color: #8990a8;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.register-input-action {
+    position: absolute;
+    z-index: 2;
+    right: 16px;
+    top: 50%;
+    color: #8990a8;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.register-field input {
+    width: 100%;
+    height: 54px;
+    padding: 0 48px;
+    border: 1px solid rgba(111, 119, 153, 0.25);
+    border-radius: 9px;
+    outline: none;
+    background:
+        linear-gradient(145deg,
+            rgba(8, 17, 40, 0.95),
+            rgba(7, 15, 35, 0.98));
+    color: #f7f5ff;
+    font: inherit;
+    font-size: 14px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.012);
+    transition:
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        background 150ms ease;
+}
+
+.register-field input::placeholder {
+    color: #858ba2;
+}
+
+.register-field input:hover {
+    border-color: rgba(139, 92, 246, 0.43);
+}
+
+.register-field input:focus {
+    border-color: rgba(139, 92, 246, 0.8);
+    box-shadow:
+        0 0 0 3px rgba(124, 58, 237, 0.09),
+        0 0 20px rgba(124, 58, 237, 0.04);
+}
+
+.register-field:focus-within .register-input-icon {
+    color: #9b7cff;
+}
+
+.register-field__error {
+    display: block;
+    margin-top: 6px;
+    color: #fca5a5;
+    font-size: 11px;
+}
+
+.register-submit {
+    width: 100%;
+    min-height: 56px;
+    margin-top: 7px;
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    border: 0;
+    border-radius: 9px;
+    background:
+        linear-gradient(100deg,
+            #7c3aed 0%,
+            #8b5cf6 50%,
+            #6d28d9 100%);
+    color: #ffffff;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow:
+        0 10px 30px rgba(109, 40, 217, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.13);
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        opacity 150ms ease;
+}
+
+.register-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+        0 15px 35px rgba(109, 40, 217, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.register-submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.register-submit:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+/* =========================================================
+   MESSAGES
+   ========================================================= */
+
+.register-message {
+    margin-bottom: 20px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.register-message--error {
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    background: rgba(127, 29, 29, 0.18);
+    color: #fca5a5;
+}
+
+.register-message--success {
+    border: 1px solid rgba(74, 222, 128, 0.22);
+    background: rgba(20, 83, 45, 0.18);
+    color: #86efac;
+}
+
+/* =========================================================
+   LOGIN + SECURITY
+   ========================================================= */
+
+.register-login {
+    margin: 24px 0 0;
+    color: rgba(209, 206, 223, 0.66);
+    text-align: center;
+    font-size: 13px;
+}
+
+.register-login a {
+    margin-left: 4px;
+    color: #a970ff;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.register-login a:hover {
+    color: #c4a7ff;
+    text-decoration: underline;
+}
+
+.register-secure {
+    margin-top: 23px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: rgba(199, 196, 215, 0.64);
+    font-size: 12px;
+}
+
+.register-secure svg {
+    color: #8b5cf6;
+}
+
+
+.register-password-toggle {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    right: 16px;
+
+    width: 34px;
+    height: 34px;
+    padding: 0;
+
+    display: grid;
+    place-items: center;
+
+    border: 0;
+    border-radius: 7px;
+    outline: none;
+
+    background: transparent;
+    color: #8990a8;
+
+    cursor: pointer;
+
+    transform: translateY(-50%);
+
+    transition:
+        color 150ms ease,
+        background 150ms ease;
+}
+
+.register-password-toggle:hover {
+    color: #a970ff;
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.register-password-toggle:focus-visible {
+    color: #a970ff;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.35);
+}
+
+.register-password-toggle svg {
+    display: block;
+    pointer-events: none;
+}
+
+.register-field:focus-within .register-password-toggle {
+    color: #9b7cff;
+}
+
+/* =========================================================
+   LIGHT THEME
+
+   Auth design intentionally stays dark to match the
+   login/register branding reference in both app themes.
+   ========================================================= */
+
+[data-theme="light"] .register-page,
+[data-theme="light"] .register-form-panel {
+    color-scheme: dark;
+}
+
+/* =========================================================
+   SMALL DESKTOP / TABLET
+   ========================================================= */
+
+@media (max-width: 1180px) {
+    .register-page {
+        grid-template-columns:
+            minmax(390px, 0.85fr) minmax(500px, 1.15fr);
+    }
+
+    .register-showcase__content {
+        padding-left: 40px;
+        padding-right: 40px;
+    }
+
+    .register-showcase__copy h1 {
+        font-size: 43px;
+    }
+
+    .register-illustration {
+        width: 420px;
+        transform: scale(0.88);
+        transform-origin: right bottom;
+    }
+
+    .register-form-panel {
+        padding: 36px;
+    }
+
+    .register-form-card {
+        padding-left: 42px;
+        padding-right: 42px;
+    }
+}
+
+@media (max-width: 980px) {
+    .register-page {
+        grid-template-columns:
+            minmax(340px, 0.78fr) minmax(460px, 1.22fr);
+    }
+
+    .register-showcase__content {
+        padding: 34px 30px 24px;
+    }
+
+    .register-brand__logo {
+        width: 42px;
+        height: 42px;
+    }
+
+    .register-brand-name {
+        font-size: 25px;
+    }
+
+    .register-showcase__badge {
+        margin-top: 24px;
+        font-size: 10px;
+    }
+
+    .register-showcase__copy h1 {
+        font-size: 38px;
+    }
+
+    .register-showcase__copy>p {
+        font-size: 12px;
+    }
+
+    .register-features {
+        gap: 14px;
+    }
+
+    .register-feature__icon {
+        width: 35px;
+        height: 35px;
+        flex-basis: 35px;
+    }
+
+    .register-feature strong {
+        font-size: 12px;
+    }
+
+    .register-feature p {
+        font-size: 10px;
+    }
+
+    .register-illustration {
+        right: -60px;
+        transform: scale(0.72);
+    }
+
+    .register-form-panel {
+        padding: 30px;
+    }
+
+    .register-form-card {
+        padding: 38px 32px 30px;
+    }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 760px) {
+    .register-page {
+        display: block;
+        min-height: 100vh;
+        overflow: visible;
+        background: #030817;
+    }
+
+    .register-showcase {
+        display: none;
+    }
+
+    .register-form-panel {
+        min-height: 100vh;
+        display: block;
+        padding:
+            max(25px, env(safe-area-inset-top)) 20px max(30px, env(safe-area-inset-bottom));
+    }
+
+    .register-mobile-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: fit-content;
+        margin: 0 auto 34px;
+    }
+
+    .register-mobile-brand img {
+        width: 39px;
+        height: 39px;
+        object-fit: contain;
+    }
+
+    .register-mobile-brand__name {
+        display: inline-flex;
+        color: #ffffff;
+        font-size: 23px;
+        font-weight: 780;
+        letter-spacing: -0.04em;
+    }
+
+    .register-mobile-brand__name strong {
+        color: #9b5cff;
+        font: inherit;
+    }
+
+    .register-form-card {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 32px 24px 27px;
+        border-radius: 13px;
+    }
+
+    .register-form-container {
+        max-width: none;
+    }
+
+    .register-heading {
+        margin-bottom: 29px;
+    }
+
+    .register-heading h2 {
+        font-size: 31px;
+    }
+
+    .register-heading p {
+        font-size: 13px;
+    }
+
+    .register-form {
+        gap: 18px;
+    }
+
+    .register-field input {
+        height: 52px;
+    }
+
+    .register-submit {
+        min-height: 53px;
+    }
+}
+
+@media (max-width: 480px) {
+    .register-form-panel {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .register-mobile-brand {
+        margin-bottom: 26px;
+    }
+
+    .register-mobile-brand img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .register-mobile-brand__name {
+        font-size: 21px;
+    }
+
+    .register-form-card {
+        padding: 28px 18px 25px;
+    }
+
+    .register-heading__eyebrow {
+        font-size: 10px;
+    }
+
+    .register-heading h2 {
+        font-size: 28px;
+    }
+
+    .register-heading p {
+        max-width: 290px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .register-field input {
+        padding-left: 44px;
+        padding-right: 43px;
+        font-size: 13px;
+    }
+
+    .register-input-icon {
+        left: 14px;
+    }
+
+    .register-input-action {
+        right: 14px;
+    }
+
+    .register-submit {
+        font-size: 14px;
+    }
+
+    .register-secure {
+        font-size: 11px;
+    }
+}
+
+@media (max-height: 820px) and (min-width: 761px) {
+    .register-showcase__content {
+        padding-top: 28px;
+    }
+
+    .register-showcase__badge {
+        margin-top: 18px;
+    }
+
+    .register-showcase__copy {
+        margin-top: 15px;
+    }
+
+    .register-showcase__copy h1 {
+        font-size: 40px;
+    }
+
+    .register-showcase__copy>p {
+        margin-top: 13px;
+    }
+
+    .register-features {
+        margin-top: 18px;
+        gap: 11px;
+    }
+
+    .register-feature__icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+    }
+
+    .register-illustration {
+        transform: scale(0.8);
+        transform-origin: right bottom;
+    }
+
+    .register-form-card {
+        padding-top: 32px;
+        padding-bottom: 26px;
+    }
+
+    .register-heading {
+        margin-bottom: 24px;
+    }
+
+    .register-form {
+        gap: 15px;
+    }
+
+    .register-field input {
+        height: 49px;
+    }
+
+    .register-submit {
+        min-height: 50px;
+    }
+
+    .register-login {
+        margin-top: 18px;
+    }
+
+    .register-secure {
+        margin-top: 17px;
+    }
+}

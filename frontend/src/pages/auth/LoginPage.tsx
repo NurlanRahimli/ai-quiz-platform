@@ -5,7 +5,19 @@ import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../../auth/useAuth"
 
 import apiClient from "../../api/client"
-import "../../styles/pages/auth/RegisterPage.css"
+import {
+  BarChart3,
+  BrainCircuit,
+  Eye,
+  EyeOff,
+  FlaskConical,
+  LockKeyhole,
+  Mail,
+  PencilLine,
+  ShieldCheck,
+  TrendingUp,
+} from "lucide-react"
+import "../../styles/pages/auth/LoginRedesign.css"
 
 type LoginForm = {
   email: string
@@ -29,6 +41,7 @@ function LoginPage() {
   const { login } = useAuth()
   const [errors, setErrors] = useState<LoginErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const updateField = (field: keyof LoginForm, value: string) => {
     setForm((current) => ({
@@ -99,80 +112,225 @@ function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
-        <div className="auth-brand">
-          <div className="brand-icon">Q</div>
+    <main className="login-page">
+      <section className="login-showcase">
+        <div className="login-showcase__glow login-showcase__glow--one" />
+        <div className="login-showcase__glow login-showcase__glow--two" />
 
-          <div>
-            <p className="brand-name">AI Quiz</p>
-            <p className="brand-subtitle">Intelligent learning platform</p>
-          </div>
-        </div>
+        <div className="login-particle login-particle--one" />
+        <div className="login-particle login-particle--two" />
+        <div className="login-particle login-particle--three" />
 
-        <div className="auth-heading">
-          <h1>Welcome back</h1>
-          <p>Log in to continue creating smarter quizzes.</p>
-        </div>
-
-        {errors.form && (
-          <div className="form-message form-error" role="alert">
-            {errors.form}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="form-field">
-            <label htmlFor="email">Email</label>
-
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={form.email}
-              onChange={(event) =>
-                updateField("email", event.target.value)
-              }
+        <div className="login-showcase__content">
+          <div className="login-brand">
+            <img
+              src="/quizapp-logo.svg"
+              alt=""
+              className="login-brand__logo"
             />
 
-            {errors.email && (
-              <span className="field-error">{errors.email}</span>
-            )}
+            <span className="login-brand-name">
+              <span>Quiz</span>
+              <strong>App</strong>
+            </span>
           </div>
 
-          <div className="form-field">
-            <label htmlFor="password">Password</label>
+          <span className="login-showcase__eyebrow">
+            ✦ Smarter Quizzes. Better Learning.
+          </span>
 
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Enter your password"
-              value={form.password}
-              onChange={(event) =>
-                updateField("password", event.target.value)
-              }
-            />
+          <div className="login-showcase__copy">
+            <h1>
+              Master what matters.
+              <span>One quiz at a time.</span>
+            </h1>
 
-            {errors.password && (
-              <span className="field-error">{errors.password}</span>
-            )}
+            <p>
+              Create engaging quizzes, challenge yourself, and track your
+              progress with powerful analytics and AI insights.
+            </p>
           </div>
 
-          <button
-            className="primary-button"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Logging in..." : "Log in"}
-          </button>
-        </form>
+          <div className="login-benefits">
+            <div className="login-benefit">
+              <span className="login-benefit__icon">
+                <PencilLine size={20} />
+              </span>
+              <div>
+                <strong>Create &amp; Customize</strong>
+                <p>Build beautiful quizzes with multiple question types.</p>
+              </div>
+            </div>
 
-        <p className="auth-switch">
-          Don't have an account?{" "}
-          <Link to="/register">Create one</Link>
-        </p>
+            <div className="login-benefit">
+              <span className="login-benefit__icon">
+                <BarChart3 size={20} />
+              </span>
+              <div>
+                <strong>Track Progress</strong>
+                <p>Detailed analytics to help you improve every day.</p>
+              </div>
+            </div>
+
+            <div className="login-benefit">
+              <span className="login-benefit__icon">
+                <BrainCircuit size={20} />
+              </span>
+              <div>
+                <strong>AI-Powered Insights</strong>
+                <p>Get personalized suggestions to learn smarter.</p>
+              </div>
+            </div>
+
+            <div className="login-benefit">
+              <span className="login-benefit__icon">
+                <ShieldCheck size={20} />
+              </span>
+              <div>
+                <strong>Secure &amp; Private</strong>
+                <p>Your data is encrypted and always protected.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="login-visual" aria-hidden="true">
+            <div className="login-visual__quiz">
+              <div className="login-visual__quiz-heading">
+                <span className="login-visual__quiz-icon">
+                  <FlaskConical size={19} />
+                </span>
+
+                <div>
+                  <span>Science Quiz</span>
+                  <strong>8 of 10 completed</strong>
+                </div>
+              </div>
+
+              <div className="login-visual__progress">
+                <span />
+              </div>
+
+              <div className="login-visual__percent">85%</div>
+            </div>
+
+            <div className="login-visual__score">
+              <span>Score</span>
+              <strong>92%</strong>
+              <TrendingUp size={22} />
+            </div>
+
+            <div className="login-visual__streak">
+              <span>🔥 Streak</span>
+              <strong>7 days</strong>
+            </div>
+
+            <div className="login-visual__platform login-visual__platform--one" />
+            <div className="login-visual__platform login-visual__platform--two" />
+            <div className="login-visual__platform login-visual__platform--three" />
+          </div>
+        </div>
+      </section>
+
+      <section className="login-form-panel">
+        <div className="login-mobile-brand">
+          <img src="/quizapp-logo.svg" alt="" />
+          <span>
+            <strong>Quiz</strong>
+            <b>App</b>
+          </span>
+        </div>
+
+        <div className="login-form-card">
+          <div className="login-heading">
+            <span className="login-heading__eyebrow">WELCOME BACK</span>
+            <h2>Welcome back! 👋</h2>
+            <p>Log in to continue your learning journey.</p>
+          </div>
+
+          {errors.form && (
+            <div className="login-message login-message--error" role="alert">
+              {errors.form}
+            </div>
+          )}
+
+          <form className="login-form" onSubmit={handleSubmit} noValidate>
+            <div className="login-field">
+              <label htmlFor="email">Email address</label>
+
+              <div className="login-input">
+                <Mail size={19} />
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="Enter your email"
+                  value={form.email}
+                  onChange={(event) =>
+                    updateField("email", event.target.value)
+                  }
+                />
+              </div>
+
+              {errors.email && (
+                <span className="login-field__error">{errors.email}</span>
+              )}
+            </div>
+
+            <div className="login-field">
+              <label htmlFor="password">Password</label>
+
+              <div className="login-input">
+                <LockKeyhole size={19} />
+
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  value={form.password}
+                  onChange={(event) =>
+                    updateField("password", event.target.value)
+                  }
+                />
+
+                <button
+                  className="login-password-toggle"
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff size={19} />
+                  ) : (
+                    <Eye size={19} />
+                  )}
+                </button>
+              </div>
+
+              {errors.password && (
+                <span className="login-field__error">{errors.password}</span>
+              )}
+            </div>
+
+            <button
+              className="login-submit"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Logging in..." : "Log in"}
+              {!isSubmitting && <span>→</span>}
+            </button>
+          </form>
+
+          <p className="login-switch">
+            Don't have an account? <Link to="/register">Sign up</Link>
+          </p>
+        </div>
+
+        <div className="login-security">
+          <ShieldCheck size={16} />
+          <span>Your data is secure and encrypted</span>
+        </div>
       </section>
     </main>
   )
