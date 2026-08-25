@@ -21,6 +21,7 @@ import PublicProfilePage from "./pages/profile/PublicProfilePage"
 import AuditLogPage from "./pages/audit/AuditLogPage";
 import MyAttemptsPage from "./pages/attempts/MyAttemptsPage";
 import ImportQuizPage from "./pages/quizzes/ImportQuizPage";
+import SettingsPage from "./pages/settings/SettingsPage";
 
 
 function QuizDetailsLayout() {
@@ -53,6 +54,7 @@ function ProtectedAppLayout() {
         />
         <Route path="/quizzes/edit/:quizId" element={<EditQuizPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/audit-log" element={<AuditLogPage />} />
         <Route path="/attempts" element={<MyAttemptsPage />} />
         <Route

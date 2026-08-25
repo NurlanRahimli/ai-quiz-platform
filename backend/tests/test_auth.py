@@ -1,4 +1,6 @@
+import uuid
 from sqlalchemy import select
+from tests.conftest import register_verified_user
 from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from app.core.config import settings
@@ -8,6 +10,9 @@ from app.core.security import hash_otp, hash_password
 from app.models.email_verification import EmailVerification
 
 from app.models.user import User
+from app.models.quiz import Quiz
+from app.models.quiz_attempt import QuizAttempt
+from app.models.quiz_attempt_answer import QuizAttemptAnswer
 from app.core.security import verify_password
 from app.core.config import settings
 
@@ -776,6 +781,7 @@ def register_user(
     client,
     email="login@example.com",
     password="Testing123!",
+    display_name="Test User",
 ):
     otp = "123456"
 
@@ -788,7 +794,7 @@ def register_user(
         register_response = client.post(
             "/api/v1/auth/register",
             json={
-                "display_name": "Test User",
+                "display_name": display_name,
                 "email": email,
                 "password": password,
             },
@@ -807,6 +813,74 @@ def register_user(
     assert verify_response.status_code == 201
 
     return verify_response
+
+def test_register_rejects_taken_display_name_case_insensitively(
+    client,
+):
+    register_user(
+        client,
+        email="display-name-existing@example.com",
+        display_name="Unique Registration Name",
+    )
+
+    with patch(
+        "app.api.v1.auth.send_verification_email",
+    ):
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "unique registration name",
+                "email": "display-name-new@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Display name is already taken"
+    )
+
+
+def test_verify_email_rechecks_display_name_uniqueness(
+    client,
+):
+    otp = "123456"
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value=otp,
+    ), patch(
+        "app.api.v1.auth.send_verification_email",
+    ):
+        pending_response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "display_name": "Pending Unique Name",
+                "email": "pending-name@example.com",
+                "password": "Testing123!",
+            },
+        )
+
+    assert pending_response.status_code == 202
+
+    register_user(
+        client,
+        email="claimed-name@example.com",
+        display_name="Pending Unique Name",
+    )
+
+    response = client.post(
+        "/api/v1/auth/verify-email",
+        json={
+            "email": "pending-name@example.com",
+            "otp": otp,
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Display name is already taken"
+    )
 
 
 def test_login_success(client):
@@ -1061,4 +1135,618 @@ def test_update_current_user_requires_authentication(client):
     )
 
     assert response.status_code in (401, 403)
+
+
+
+def test_update_current_user_rejects_taken_display_name_case_insensitively(
+    client,
+):
+    register_user(
+        client,
+        email="display-name-owner@example.com",
+        display_name="Unique Display Name",
+    )
+
+    register_user(
+        client,
+        email="display-name-other@example.com",
+        display_name="Other Display Name",
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "display-name-other@example.com",
+            "password": "Testing123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "display_name": "unique display name",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Display name is already taken"
+    )
+
+def test_update_current_user_can_keep_own_display_name(
+    client,
+):
+    register_user(
+        client,
+        email="keep-display-name@example.com",
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "keep-display-name@example.com",
+            "password": "Testing123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    headers = {
+        "Authorization": (
+            f"Bearer {login_response.json()['access_token']}"
+        ),
+    }
+
+    first_response = client.patch(
+        "/api/v1/auth/me",
+        headers=headers,
+        json={
+            "display_name": "Keep My Name",
+        },
+    )
+
+    assert first_response.status_code == 200
+
+    second_response = client.patch(
+        "/api/v1/auth/me",
+        headers=headers,
+        json={
+            "display_name": "keep my name",
+        },
+    )
+
+    assert second_response.status_code == 200
+    assert (
+        second_response.json()["display_name"]
+        == "keep my name"
+    )
+
+
+def test_change_password_successfully_updates_password(client):
+    email = "change-password@example.com"
+    old_password = "Testing123!"
+    new_password = "ChangedPassword123!"
+
+    register_user(
+        client,
+        email=email,
+        password=old_password,
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": old_password,
+        },
+    )
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me/password",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "current_password": old_password,
+            "new_password": new_password,
+        },
+    )
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+    old_login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": old_password,
+        },
+    )
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": new_password,
+        },
+    )
+    assert new_login.status_code == 200
+    assert "access_token" in new_login.json()
+
+
+def test_change_password_rejects_incorrect_current_password(client):
+    email = "wrong-current-password@example.com"
+
+    register_user(
+        client,
+        email=email,
+        password="Testing123!",
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": "Testing123!",
+        },
+    )
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me/password",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "current_password": "WrongPassword123!",
+            "new_password": "ChangedPassword123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Current password is incorrect"
+
+    original_login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": "Testing123!",
+        },
+    )
+    assert original_login.status_code == 200
+
+
+def test_change_password_rejects_same_password(client):
+    email = "same-password@example.com"
+    password = "Testing123!"
+
+    register_user(
+        client,
+        email=email,
+        password=password,
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me/password",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "current_password": password,
+            "new_password": password,
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.json()["detail"]
+        == "New password must be different from current password"
+    )
+
+
+def test_change_password_rejects_short_new_password(client):
+    email = "short-new-password@example.com"
+
+    register_user(
+        client,
+        email=email,
+        password="Testing123!",
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": "Testing123!",
+        },
+    )
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/auth/me/password",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+        json={
+            "current_password": "Testing123!",
+            "new_password": "short",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_change_password_requires_authentication(client):
+    response = client.patch(
+        "/api/v1/auth/me/password",
+        json={
+            "current_password": "Testing123!",
+            "new_password": "ChangedPassword123!",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_delete_account_rejects_incorrect_password(
+    client,
+    db,
+):
+    email = "delete-wrong-password@example.com"
+    password = "Testing123!"
+
+    register_verified_user(
+        client,
+        email=email,
+        display_name="Delete Wrong Password",
+        password=password,
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    headers = {
+        "Authorization": (
+            f"Bearer {login_response.json()['access_token']}"
+        ),
+    }
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        headers=headers,
+        json={
+            "password": "WrongPassword123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Password is incorrect"
+
+    user = db.scalar(
+        select(User).where(User.email == email)
+    )
+
+    assert user is not None
+
+
+def test_delete_account_removes_current_user(
+    client,
+    db,
+):
+    email = "delete-account@example.com"
+    password = "Testing123!"
+
+    register_verified_user(
+        client,
+        email=email,
+        display_name="Delete Account User",
+        password=password,
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    headers = {
+        "Authorization": (
+            f"Bearer {login_response.json()['access_token']}"
+        ),
+    }
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        headers=headers,
+        json={
+            "password": password,
+        },
+    )
+
+    assert response.status_code == 204
+
+    db.expire_all()
+
+    user = db.scalar(
+        select(User).where(User.email == email)
+    )
+
+    assert user is None
+
+
+def test_delete_account_requires_authentication(client):
+    response = client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        json={
+            "password": "Testing123!",
+        },
+    )
+
+    assert response.status_code in {401, 403}
+
+
+def test_delete_account_cascades_all_user_data(
+    client,
+    db,
+):
+    password = "Testing123!"
+
+    # -----------------------------------------------------
+    # User A: account that will be deleted
+    # -----------------------------------------------------
+
+    user_a = register_verified_user(
+        client,
+        email="delete-cascade-a@example.com",
+        display_name="Delete Cascade A",
+        password=password,
+    )
+
+    login_a = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "delete-cascade-a@example.com",
+            "password": password,
+        },
+    )
+
+    assert login_a.status_code == 200
+
+    headers_a = {
+        "Authorization": (
+            f"Bearer {login_a.json()['access_token']}"
+        ),
+    }
+
+    # -----------------------------------------------------
+    # User B: must survive User A deletion
+    # -----------------------------------------------------
+
+    user_b = register_verified_user(
+        client,
+        email="delete-cascade-b@example.com",
+        display_name="Delete Cascade B",
+        password=password,
+    )
+
+    user_a_id = uuid.UUID(user_a["id"])
+    user_b_id = uuid.UUID(user_b["id"])
+
+    login_b = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "delete-cascade-b@example.com",
+            "password": password,
+        },
+    )
+
+    assert login_b.status_code == 200
+
+    headers_b = {
+        "Authorization": (
+            f"Bearer {login_b.json()['access_token']}"
+        ),
+    }
+
+    # -----------------------------------------------------
+    # User A creates their own quiz.
+    # It should disappear when User A is deleted.
+    # -----------------------------------------------------
+
+    owned_quiz_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers_a,
+        json={
+            "title": "User A Owned Quiz",
+            "description": "Must be deleted with User A",
+        },
+    )
+
+    assert owned_quiz_response.status_code == 201
+
+    owned_quiz_id = uuid.UUID(owned_quiz_response.json()["id"])
+
+    # -----------------------------------------------------
+    # User B creates a quiz.
+    # It must survive User A deletion.
+    # -----------------------------------------------------
+
+    surviving_quiz_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers_b,
+        json={
+            "title": "User B Surviving Quiz",
+            "description": "Must survive User A deletion",
+        },
+    )
+
+    assert surviving_quiz_response.status_code == 201
+
+    surviving_quiz_id = uuid.UUID(surviving_quiz_response.json()["id"])
+
+    question_response = client.post(
+        (
+            f"/api/v1/quizzes/"
+            f"{surviving_quiz_id}/questions"
+        ),
+        headers=headers_b,
+        json={
+            "text": "What is 2 + 2?",
+            "choices": [
+                {
+                    "text": "3",
+                    "is_correct": False,
+                },
+                {
+                    "text": "4",
+                    "is_correct": True,
+                },
+            ],
+        },
+    )
+
+    assert question_response.status_code == 201
+
+    question = question_response.json()
+
+    correct_choice = next(
+        choice
+        for choice in question["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    # -----------------------------------------------------
+    # User A attempts User B's quiz.
+    # This attempt must disappear when User A is deleted.
+    # -----------------------------------------------------
+
+    attempt_response = client.post(
+        (
+            f"/api/v1/quizzes/"
+            f"{surviving_quiz_id}/attempts"
+        ),
+        headers=headers_a,
+        json={
+            "answers": [
+                {
+                    "question_id": question["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+            ],
+        },
+    )
+
+    assert attempt_response.status_code == 201
+
+    attempt_id = uuid.UUID(attempt_response.json()["id"])
+
+    # Confirm test data exists before deletion.
+    assert db.get(User, user_a_id) is not None
+    assert db.get(User, user_b_id) is not None
+
+    assert db.get(Quiz, owned_quiz_id) is not None
+    assert db.get(Quiz, surviving_quiz_id) is not None
+
+    assert db.get(QuizAttempt, attempt_id) is not None
+
+    attempt_answers_before = db.scalars(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt_id
+        )
+    ).all()
+
+    assert len(attempt_answers_before) == 1
+
+    # -----------------------------------------------------
+    # Delete User A
+    # -----------------------------------------------------
+
+    delete_response = client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        headers=headers_a,
+        json={
+            "password": password,
+        },
+    )
+
+    assert delete_response.status_code == 204
+
+    # The API request uses a separate database session.
+    # End this fixture session's current transaction so the
+    # following reads see the committed cascade deletion.
+    db.rollback()
+    db.expire_all()
+
+    # -----------------------------------------------------
+    # User A and User A-owned data must be gone.
+    # -----------------------------------------------------
+
+    assert db.get(User, user_a_id) is None
+    assert db.get(Quiz, owned_quiz_id) is None
+
+    # User A's attempt on somebody else's quiz must be gone.
+    assert db.get(QuizAttempt, attempt_id) is None
+
+    attempt_answers_after = db.scalars(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt_id
+        )
+    ).all()
+
+    assert attempt_answers_after == []
+
+    # -----------------------------------------------------
+    # User B and User B's quiz must remain untouched.
+    # -----------------------------------------------------
+
+    assert db.get(User, user_b_id) is not None
+    assert db.get(Quiz, surviving_quiz_id) is not None
+
+    surviving_quiz_response = client.get(
+        f"/api/v1/quizzes/{surviving_quiz_id}",
+        headers=headers_b,
+    )
+
+    assert surviving_quiz_response.status_code == 200
 

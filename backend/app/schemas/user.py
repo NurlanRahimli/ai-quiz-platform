@@ -16,7 +16,13 @@ class UserRegister(BaseModel):
 
     @field_validator("display_name")
     @classmethod
-    def validate_display_name(cls, value: str) -> str:
+    def validate_display_name(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
         value = value.strip()
 
         if len(value) < 2:
@@ -62,7 +68,11 @@ class ResendVerificationRequest(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    display_name: str = Field(min_length=2, max_length=100)
+    display_name: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=100,
+    )
 
     @field_validator("display_name")
     @classmethod
@@ -75,6 +85,16 @@ class UserUpdate(BaseModel):
             )
 
         return value
+
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class UserResponse(BaseModel):

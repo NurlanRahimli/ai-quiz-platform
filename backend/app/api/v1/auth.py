@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
@@ -18,7 +19,9 @@ from app.core.security import (
 from app.models.email_verification import EmailVerification
 from app.models.user import User
 from app.schemas.user import (
+    AccountDeleteRequest,
     RegistrationPendingResponse,
+    PasswordChangeRequest,
     TokenResponse,
     UserLogin,
     UserRegister,
@@ -55,14 +58,103 @@ def update_me(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> User:
-    current_user.display_name = user_data.display_name
+    if user_data.display_name is not None:
+        display_name_owner = db.scalar(
+            select(User).where(
+                func.lower(User.display_name)
+                == user_data.display_name.lower(),
+                User.id != current_user.id,
+            )
+        )
+
+        if display_name_owner is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Display name is already taken",
+            )
+
+        current_user.display_name = user_data.display_name
 
     db.add(current_user)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Display name is already taken",
+        )
+
     db.refresh(current_user)
 
     return current_user
-    
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_me(
+    delete_data: AccountDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    if not verify_password(
+        delete_data.password,
+        current_user.password_hash,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is incorrect",
+        )
+
+    verification = db.scalar(
+        select(EmailVerification).where(
+            EmailVerification.email == current_user.email
+        )
+    )
+
+    if verification is not None:
+        db.delete(verification)
+
+    db.delete(current_user)
+    db.commit()
+
+
+@router.patch(
+    "/me/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def change_password(
+    password_data: PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    if not verify_password(
+        password_data.current_password,
+        current_user.password_hash,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    if verify_password(
+        password_data.new_password,
+        current_user.password_hash,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from current password",
+        )
+
+    current_user.password_hash = hash_password(
+        password_data.new_password
+    )
+
+    db.add(current_user)
+    db.commit()
+
 
 @router.post(
     "/register",
@@ -81,6 +173,19 @@ def register_user(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
+        )
+
+    display_name_owner = db.scalar(
+        select(User).where(
+            func.lower(User.display_name)
+            == user_data.display_name.lower()
+        )
+    )
+
+    if display_name_owner is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Display name is already taken",
         )
 
     existing_verification = db.scalar(
@@ -200,6 +305,19 @@ def verify_email(
             detail="An account with this email already exists",
         )
 
+    display_name_owner = db.scalar(
+        select(User).where(
+            func.lower(User.display_name)
+            == verification.display_name.lower()
+        )
+    )
+
+    if display_name_owner is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Display name is already taken",
+        )
+
     user = User(
         email=verification.email,
         display_name=verification.display_name,
@@ -208,7 +326,16 @@ def verify_email(
 
     db.add(user)
     db.delete(verification)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Display name is already taken",
+        )
+
     db.refresh(user)
 
     return user
