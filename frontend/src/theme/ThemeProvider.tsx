@@ -30,7 +30,7 @@ function getInitialTheme(): ThemePreference {
     return storedTheme;
   }
 
-  return "system";
+  return "dark";
 }
 
 interface ThemeProviderProps {

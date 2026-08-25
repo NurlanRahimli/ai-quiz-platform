@@ -46,6 +46,12 @@ class Quiz(Base):
         default="unlisted",
         server_default=text("'unlisted'"),
     )
+    icon: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="file-question",
+        server_default=text("'file-question'"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import apiClient from "../../api/client";
+import QuizIcon from "../../components/quizzes/QuizIcon";
 import "../../styles/pages/quizzes/DiscoverQuizzesPage.css";
 
 type DiscoveryQuiz = {
@@ -26,6 +27,7 @@ type DiscoveryQuiz = {
   visibility: "public" | "unlisted";
   category: string | null;
   tags: string[];
+  icon: string;
   creator_name: string;
   question_count: number;
   attempt_count: number;
@@ -359,7 +361,7 @@ export default function DiscoverQuizzesPage() {
               >
                 <div className="discover-featured-card__top">
                   <div className="discover-featured-card__icon">
-                    <CircleHelp size={22} aria-hidden="true" />
+                    <QuizIcon name={quiz.icon} size={22} />
                   </div>
 
                   {quiz.category && (
@@ -491,7 +493,7 @@ export default function DiscoverQuizzesPage() {
                 }}
               >
                 <div className="discover-quiz-row__icon">
-                  <CircleHelp size={21} aria-hidden="true" />
+                  <QuizIcon name={quiz.icon} size={21} />
                 </div>
 
                 <div className="discover-quiz-row__main">

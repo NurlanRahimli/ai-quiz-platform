@@ -19,6 +19,7 @@ import {
 import apiClient from "../../api/client";
 import { useAuth } from "../../auth/useAuth";
 import Button from "../../components/ui/Button";
+import QuizIcon from "../../components/quizzes/QuizIcon";
 
 import "../../styles/pages/quizzes/QuizDetailsPage.css";
 
@@ -29,6 +30,7 @@ type QuizDetails = {
   description: string | null;
   category: string | null;
   tags: string[];
+  icon: string;
   visibility: "public" | "unlisted";
   creator_name: string;
   question_count: number;
@@ -151,7 +153,7 @@ function QuizDetailsPage() {
                 <div className="quiz-details-badges">
                   <div className="quiz-details-eyebrow">
                     <span className="quiz-details-eyebrow__icon">
-                      <FileQuestion size={16} aria-hidden="true" />
+                      <QuizIcon name={quiz.icon} size={16} />
                     </span>
                     Quiz
                   </div>

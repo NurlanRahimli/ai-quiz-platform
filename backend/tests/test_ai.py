@@ -5,12 +5,15 @@ from app.schemas.ai import (
     CategorySuggestionResponse,
     IncorrectAnswerExplanationResponse,
     MathAnswerEvaluationResponse,
+    QuizIconContext,
+    QuizIconSuggestionResponse,
     TagSuggestionResponse,
 )
 from app.services.ai_service import (
     evaluate_math_answer,
     evaluate_written_answer,
     generate_incorrect_answer_explanation,
+    suggest_quiz_icon,
 )
 from tests.conftest import register_verified_user
 
@@ -228,6 +231,89 @@ def test_suggest_tags_handles_ai_failure(
     assert response.json() == {
         "detail": "Unable to generate tag suggestions right now."
     }
+
+
+def test_suggest_quiz_icon_returns_allowed_icon():
+    parsed_result = QuizIconSuggestionResponse(
+        icon="code-2",
+    )
+
+    context = QuizIconContext(
+        title="Python Fundamentals",
+        description="Learn the basics of Python programming.",
+        category="Programming",
+        tags=["Python", "Basics"],
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = suggest_quiz_icon(context)
+
+    assert result.icon == "code-2"
+    mock_client.responses.parse.assert_called_once()
+
+
+def test_suggest_quiz_icon_rejects_unsupported_icon():
+    parsed_result = QuizIconSuggestionResponse(
+        icon="rocket",
+    )
+
+    context = QuizIconContext(
+        title="Python Fundamentals",
+        category="Programming",
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        try:
+            suggest_quiz_icon(context)
+        except RuntimeError as exc:
+            assert str(exc) == "OpenAI returned an unsupported quiz icon"
+        else:
+            raise AssertionError(
+                "Expected unsupported quiz icon to raise RuntimeError"
+            )
+
+
+def test_suggest_quiz_icon_rejects_missing_result():
+    context = QuizIconContext(
+        title="World History",
+        category="History",
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = None
+
+        try:
+            suggest_quiz_icon(context)
+        except RuntimeError as exc:
+            assert str(exc) == "OpenAI did not return an icon suggestion"
+        else:
+            raise AssertionError(
+                "Expected missing icon suggestion to raise RuntimeError"
+            )
+
+
+@patch("app.services.ai_service.settings.openai_api_key", None)
+def test_suggest_quiz_icon_requires_openai_api_key():
+    context = QuizIconContext(
+        title="Science Basics",
+        category="Science",
+    )
+
+    try:
+        suggest_quiz_icon(context)
+    except RuntimeError as exc:
+        assert str(exc) == "OpenAI API key is not configured"
+    else:
+        raise AssertionError(
+            "Expected missing OpenAI API key to raise RuntimeError"
+        )
 
 
 def test_evaluate_written_answer_accepts_semantically_correct_answer():

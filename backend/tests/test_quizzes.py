@@ -1,6 +1,9 @@
+from unittest.mock import patch
+
 from sqlalchemy import select
 from app.models.audit_log import AuditLog
 import uuid
+from app.schemas.ai import QuizIconSuggestionResponse
 from tests.conftest import register_verified_user
 
 def register_and_login(
@@ -54,6 +57,66 @@ def test_create_quiz(client):
     assert "owner_id" in data
     assert "created_at" in data
     assert "updated_at" in data
+
+
+@patch("app.api.v1.quizzes.suggest_quiz_icon")
+def test_create_quiz_saves_ai_selected_icon(
+    mock_suggest_quiz_icon,
+    client,
+):
+    headers = register_and_login(
+        client,
+        email="quiz-icon@example.com",
+    )
+
+    mock_suggest_quiz_icon.return_value = QuizIconSuggestionResponse(
+        icon="code-2",
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Python Fundamentals",
+            "description": "Learn Python programming basics.",
+            "category": "Programming",
+            "tags": ["Python", "Basics"],
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["icon"] == "code-2"
+
+    mock_suggest_quiz_icon.assert_called_once()
+
+
+@patch("app.api.v1.quizzes.suggest_quiz_icon")
+def test_create_quiz_uses_default_icon_when_ai_fails(
+    mock_suggest_quiz_icon,
+    client,
+):
+    headers = register_and_login(
+        client,
+        email="quiz-icon-fallback@example.com",
+    )
+
+    mock_suggest_quiz_icon.side_effect = RuntimeError(
+        "OpenAI request failed"
+    )
+
+    response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "World History",
+            "category": "History",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["icon"] == "file-question"
+
+    mock_suggest_quiz_icon.assert_called_once()
 
 
 def test_create_quiz_requires_authentication(client):

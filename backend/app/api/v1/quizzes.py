@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.core.quiz_icons import DEFAULT_QUIZ_ICON
 from app.models.quiz import Quiz
 from app.models.quiz_attempt import QuizAttempt
 from app.models.user import User
@@ -22,6 +23,8 @@ from app.schemas.quiz import (
     QuizUpdate,
 )
 from app.models.question import Question
+from app.schemas.ai import QuizIconContext
+from app.services.ai_service import suggest_quiz_icon
 from app.services.audit_service import (
     QUIZ_CREATED,
     QUIZ_DELETED,
@@ -45,6 +48,22 @@ def create_quiz(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Quiz:
+    icon = DEFAULT_QUIZ_ICON
+
+    try:
+        icon_suggestion = suggest_quiz_icon(
+            QuizIconContext(
+                title=quiz_data.title,
+                description=quiz_data.description,
+                category=quiz_data.category,
+                tags=quiz_data.tags,
+            )
+        )
+        icon = icon_suggestion.icon
+    except Exception:
+        # Icon selection is optional and must never block quiz creation.
+        icon = DEFAULT_QUIZ_ICON
+
     quiz = Quiz(
         owner_id=current_user.id,
         title=quiz_data.title,
@@ -52,9 +71,8 @@ def create_quiz(
         visibility=quiz_data.visibility,
         category=quiz_data.category,
         tags=quiz_data.tags,
+        icon=icon,
     )
-
-    db.add(quiz)
 
     db.add(quiz)
     db.flush()
@@ -99,6 +117,7 @@ def list_quizzes(
             visibility=quiz.visibility,
             category=quiz.category,
             tags=quiz.tags,
+            icon=quiz.icon,
             creator_name=current_user.display_name,
             created_at=quiz.created_at,
             updated_at=quiz.updated_at,
@@ -183,6 +202,7 @@ def discover_quizzes(
             visibility=quiz.visibility,
             category=quiz.category,
             tags=quiz.tags,
+            icon=quiz.icon,
             creator_name=creator_name,
             question_count=question_count,
             attempt_count=attempt_count,
@@ -239,6 +259,7 @@ def get_discovery_overview(
             visibility=quiz.visibility,
             category=quiz.category,
             tags=quiz.tags,
+            icon=quiz.icon,
             creator_name=creator_name,
             question_count=question_count,
             attempt_count=attempt_count,

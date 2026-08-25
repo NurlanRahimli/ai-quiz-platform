@@ -3,6 +3,7 @@ import base64
 
 from app.core.config import settings
 from app.core.quiz_categories import QUIZ_CATEGORIES
+from app.core.quiz_icons import QUIZ_ICONS
 from app.schemas.ai import (
     AnswerEvaluationResponse,
     CategorySuggestionResponse,
@@ -11,6 +12,8 @@ from app.schemas.ai import (
     IncorrectAnswerExplanationResponse,
     MathAnswerEvaluationResponse,
     QuizAIContext,
+    QuizIconContext,
+    QuizIconSuggestionResponse,
     TagSuggestionResponse,
 )
 
@@ -187,6 +190,80 @@ def extract_quiz_from_file(
         )
 
     return validate_extracted_quiz(result)
+
+
+def suggest_quiz_icon(
+    quiz_context: QuizIconContext,
+) -> QuizIconSuggestionResponse:
+    if not settings.openai_api_key:
+        raise RuntimeError("OpenAI API key is not configured")
+
+    client = OpenAI(api_key=settings.openai_api_key)
+
+    icons = "\n".join(
+        f"- {icon}" for icon in QUIZ_ICONS
+    )
+
+    tags = (
+        ", ".join(quiz_context.tags)
+        if quiz_context.tags
+        else "No tags provided."
+    )
+
+    prompt = f"""
+Analyze this quiz and choose the single most appropriate icon.
+
+You MUST choose exactly one icon from this approved list:
+{icons}
+
+Choose the icon that best represents the quiz topic.
+Use the category as strong context when available, then use the title,
+description, and tags to make the most specific reasonable choice.
+
+Quiz title:
+{quiz_context.title}
+
+Quiz description:
+{quiz_context.description or "No description provided."}
+
+Quiz category:
+{quiz_context.category or "No category provided."}
+
+Quiz tags:
+{tags}
+""".strip()
+
+    response = client.responses.parse(
+        model="gpt-5-mini",
+        input=[
+            {
+                "role": "system",
+                "content": (
+                    "You select an appropriate icon for quizzes. "
+                    "Never return an icon outside the approved list."
+                ),
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        text_format=QuizIconSuggestionResponse,
+    )
+
+    result = response.output_parsed
+
+    if result is None:
+        raise RuntimeError(
+            "OpenAI did not return an icon suggestion"
+        )
+
+    if result.icon not in QUIZ_ICONS:
+        raise RuntimeError(
+            "OpenAI returned an unsupported quiz icon"
+        )
+
+    return result
 
 
 def suggest_quiz_category(
