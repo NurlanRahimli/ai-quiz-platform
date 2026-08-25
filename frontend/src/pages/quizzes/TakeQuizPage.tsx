@@ -239,6 +239,10 @@ function TakeQuizPage() {
         question_id: question.id,
         selected_choice_id: null,
         text_answer: answer || null,
+        whiteboard_image:
+          question.question_type === "math_work"
+            ? whiteboardDrawings[question.id] || null
+            : null,
       }
     })
 

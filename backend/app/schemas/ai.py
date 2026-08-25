@@ -148,3 +148,27 @@ class ImportedQuiz(BaseModel):
         min_length=1,
         max_length=30,
     )
+
+
+class AnswerEvaluationResponse(BaseModel):
+    is_correct: bool
+    explanation: str = Field(
+        min_length=1,
+        max_length=4000,
+    )
+
+
+class IncorrectAnswerExplanationResponse(BaseModel):
+    explanation: str = Field(
+        min_length=1,
+        max_length=4000,
+    )
+
+
+class MathAnswerEvaluationResponse(BaseModel):
+    is_correct: bool
+    explanation: str = Field(
+        min_length=1,
+        max_length=4000,
+    )
+

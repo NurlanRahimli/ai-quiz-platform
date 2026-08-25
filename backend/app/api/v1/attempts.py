@@ -24,7 +24,17 @@ from app.schemas.quiz_attempt import (
     UserAttemptQuizPage,
     GuestQuizAttemptResultResponse,
 )
+from app.services.whiteboard_storage_service import (
+    WhiteboardImageValidationError,
+    save_whiteboard_image,
+)
 from app.services.quiz_grading import grade_attempt_answer
+from app.services.math_validation import compare_math_expressions
+from app.services.ai_service import (
+    evaluate_math_answer,
+    evaluate_written_answer,
+    generate_incorrect_answer_explanation,
+)
 from app.services.quiz_result_pdf import build_quiz_result_pdf
 from app.models.audit_log import AuditLog
 
@@ -308,6 +318,18 @@ def submit_guest_quiz_attempt(
     for submitted_answer in attempt_data.answers:
         question = questions[submitted_answer.question_id]
 
+        if (
+            question.question_type != "math_work"
+            and submitted_answer.whiteboard_image is not None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Only math-work questions can include "
+                    "a whiteboard image"
+                ),
+            )
+
         if question.question_type == "multiple_choice":
             if submitted_answer.text_answer is not None:
                 raise HTTPException(
@@ -535,6 +557,18 @@ def submit_quiz_attempt(
     for submitted_answer in attempt_data.answers:
         question = questions[submitted_answer.question_id]
 
+        if (
+            question.question_type != "math_work"
+            and submitted_answer.whiteboard_image is not None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Only math-work questions can include "
+                    "a whiteboard image"
+                ),
+            )
+
         if question.question_type == "multiple_choice":
             if submitted_answer.text_answer is not None:
                 raise HTTPException(
@@ -599,6 +633,139 @@ def submit_quiz_attempt(
                 detail="Unsupported question type",
             )
 
+        whiteboard_image_url = None
+
+        if submitted_answer.whiteboard_image is not None:
+            try:
+                whiteboard_image_url = save_whiteboard_image(
+                    submitted_answer.whiteboard_image,
+                    attempt_id=attempt.id,
+                    question_id=question.id,
+                )
+            except WhiteboardImageValidationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(exc),
+                ) from exc
+
+        ai_is_correct = None
+        ai_explanation = None
+
+        if question.question_type == "multiple_choice":
+            selected_choice = next(
+                (
+                    choice
+                    for choice in question.answer_choices
+                    if choice.id == submitted_answer.selected_choice_id
+                ),
+                None,
+            )
+            correct_choice = next(
+                (
+                    choice
+                    for choice in question.answer_choices
+                    if choice.is_correct
+                ),
+                None,
+            )
+
+            if (
+                selected_choice is not None
+                and correct_choice is not None
+                and not selected_choice.is_correct
+            ):
+                try:
+                    explanation = generate_incorrect_answer_explanation(
+                        question_text=question.text,
+                        submitted_answer=selected_choice.text,
+                        correct_answer=correct_choice.text,
+                    )
+                except RuntimeError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=(
+                            "Unable to generate the answer explanation "
+                            "right now. Please try again."
+                        ),
+                    ) from exc
+
+                ai_explanation = explanation.explanation
+
+        if (
+            question.question_type == "written_answer"
+            and submitted_answer.text_answer is not None
+        ):
+            try:
+                evaluation = evaluate_written_answer(
+                    question_text=question.text,
+                    submitted_answer=submitted_answer.text_answer,
+                )
+            except RuntimeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=(
+                        "Unable to evaluate the written answer right now. "
+                        "Please try again."
+                    ),
+                ) from exc
+
+            ai_is_correct = evaluation.is_correct
+
+            if not evaluation.is_correct:
+                ai_explanation = evaluation.explanation
+
+        if (
+            question.question_type == "math_work"
+            and submitted_answer.text_answer is not None
+            and question.expected_answer
+        ):
+            comparison = compare_math_expressions(
+                submitted_answer.text_answer,
+                question.expected_answer,
+            )
+
+            if comparison.is_parseable:
+                ai_is_correct = comparison.is_equivalent
+
+                if not comparison.is_equivalent:
+                    try:
+                        explanation = generate_incorrect_answer_explanation(
+                            question_text=question.text,
+                            submitted_answer=submitted_answer.text_answer,
+                            correct_answer=question.expected_answer,
+                        )
+                    except RuntimeError as exc:
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail=(
+                                "Unable to generate the answer explanation "
+                                "right now. Please try again."
+                            ),
+                        ) from exc
+
+                    ai_explanation = explanation.explanation
+
+            else:
+                try:
+                    evaluation = evaluate_math_answer(
+                        question_text=question.text,
+                        submitted_answer=submitted_answer.text_answer,
+                        expected_answer=question.expected_answer,
+                    )
+                except RuntimeError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=(
+                            "Unable to evaluate the answer right now. "
+                            "Please try again."
+                        ),
+                    ) from exc
+
+                ai_is_correct = evaluation.is_correct
+
+                if not evaluation.is_correct:
+                    ai_explanation = evaluation.explanation
+
         attempt.answers.append(
             QuizAttemptAnswer(
                 question_id=question.id,
@@ -606,6 +773,9 @@ def submit_quiz_attempt(
                     submitted_answer.selected_choice_id
                 ),
                 text_answer=submitted_answer.text_answer,
+                whiteboard_image_url=whiteboard_image_url,
+                ai_is_correct=ai_is_correct,
+                ai_explanation=ai_explanation,
             )
         )
 

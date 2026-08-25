@@ -3,6 +3,7 @@ import pytest
 from app.services.math_validation import (
     MathValidationError,
     are_math_expressions_equivalent,
+    compare_math_expressions,
     parse_math_expression,
 )
 
@@ -43,3 +44,32 @@ def test_invalid_math_expression_returns_false():
 def test_empty_expression_cannot_be_parsed():
     with pytest.raises(MathValidationError):
         parse_math_expression("   ")
+
+def test_math_comparison_distinguishes_correct_math():
+    result = compare_math_expressions(
+        "6 / 2",
+        "3",
+    )
+
+    assert result.is_parseable is True
+    assert result.is_equivalent is True
+
+
+def test_math_comparison_distinguishes_incorrect_math():
+    result = compare_math_expressions(
+        "2",
+        "3",
+    )
+
+    assert result.is_parseable is True
+    assert result.is_equivalent is False
+
+
+def test_math_comparison_distinguishes_non_math_answer():
+    result = compare_math_expressions(
+        "The Sun",
+        "sun",
+    )
+
+    assert result.is_parseable is False
+    assert result.is_equivalent is False

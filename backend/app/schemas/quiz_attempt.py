@@ -8,6 +8,7 @@ class QuizAnswerSubmit(BaseModel):
     question_id: uuid.UUID
     selected_choice_id: uuid.UUID | None = None
     text_answer: str | None = None
+    whiteboard_image: str | None = None
 
 
 class QuizAttemptSubmit(BaseModel):
