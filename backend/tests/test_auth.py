@@ -8,6 +8,7 @@ from app.services.email_service import EmailDeliveryError
 from app.core.security import hash_otp, hash_password
 
 from app.models.email_verification import EmailVerification
+from app.models.password_reset import PasswordReset
 
 from app.models.user import User
 from app.models.quiz import Quiz
@@ -1750,3 +1751,657 @@ def test_delete_account_cascades_all_user_data(
 
     assert surviving_quiz_response.status_code == 200
 
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_forgot_password_creates_reset_for_existing_user(
+    mock_send_email,
+    client,
+    db,
+):
+    register_verified_user(
+        client,
+        email="forgot-existing@example.com",
+        password="Testing123!",
+        display_name="Forgot Existing",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        response = client.post(
+            "/api/v1/auth/forgot-password",
+            json={
+                "email": "forgot-existing@example.com",
+            },
+        )
+
+    assert response.status_code == 202
+    assert response.json() == {
+        "message": (
+            "If an account exists for this email, "
+            "a password reset code has been sent."
+        )
+    }
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == "forgot-existing@example.com"
+        )
+    )
+
+    assert password_reset is not None
+    assert password_reset.otp_hash
+    assert password_reset.attempt_count == 0
+    assert password_reset.expires_at is not None
+    assert password_reset.last_sent_at is not None
+
+    mock_send_email.assert_called_once_with(
+        to_email="forgot-existing@example.com",
+        otp="123456",
+    )
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_forgot_password_does_not_reveal_unknown_email(
+    mock_send_email,
+    client,
+    db,
+):
+    response = client.post(
+        "/api/v1/auth/forgot-password",
+        json={
+            "email": "does-not-exist@example.com",
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {
+        "message": (
+            "If an account exists for this email, "
+            "a password reset code has been sent."
+        )
+    }
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == "does-not-exist@example.com"
+        )
+    )
+
+    assert password_reset is None
+    mock_send_email.assert_not_called()
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_forgot_password_normalizes_email(
+    mock_send_email,
+    client,
+    db,
+):
+    register_verified_user(
+        client,
+        email="forgot-normalized@example.com",
+        password="Testing123!",
+        display_name="Forgot Normalized",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        response = client.post(
+            "/api/v1/auth/forgot-password",
+            json={
+                "email": "FORGOT-NORMALIZED@EXAMPLE.COM",
+            },
+        )
+
+    assert response.status_code == 202
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == "forgot-normalized@example.com"
+        )
+    )
+
+    assert password_reset is not None
+
+    mock_send_email.assert_called_once_with(
+        to_email="forgot-normalized@example.com",
+        otp="123456",
+    )
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_forgot_password_enforces_resend_cooldown(
+    mock_send_email,
+    client,
+    db,
+):
+    register_verified_user(
+        client,
+        email="forgot-cooldown@example.com",
+        password="Testing123!",
+        display_name="Forgot Cooldown",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        first_response = client.post(
+            "/api/v1/auth/forgot-password",
+            json={
+                "email": "forgot-cooldown@example.com",
+            },
+        )
+
+    assert first_response.status_code == 202
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == "forgot-cooldown@example.com"
+        )
+    )
+
+    assert password_reset is not None
+
+    original_otp_hash = password_reset.otp_hash
+    original_expires_at = password_reset.expires_at
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="654321",
+    ):
+        second_response = client.post(
+            "/api/v1/auth/forgot-password",
+            json={
+                "email": "forgot-cooldown@example.com",
+            },
+        )
+
+    assert second_response.status_code == 202
+    assert second_response.json() == first_response.json()
+
+    db.refresh(password_reset)
+
+    assert password_reset.otp_hash == original_otp_hash
+    assert password_reset.expires_at == original_expires_at
+
+    assert mock_send_email.call_count == 1
+
+
+@patch(
+    "app.api.v1.auth.send_password_reset_email",
+    side_effect=EmailDeliveryError("Twilio failed"),
+)
+def test_forgot_password_does_not_persist_when_email_delivery_fails(
+    mock_send_email,
+    client,
+    db,
+):
+    register_verified_user(
+        client,
+        email="forgot-delivery-failure@example.com",
+        password="Testing123!",
+        display_name="Forgot Delivery Failure",
+    )
+
+    response = client.post(
+        "/api/v1/auth/forgot-password",
+        json={
+            "email": "forgot-delivery-failure@example.com",
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == (
+        "Unable to send password reset email"
+    )
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email
+            == "forgot-delivery-failure@example.com"
+        )
+    )
+
+    assert password_reset is None
+    mock_send_email.assert_called_once()
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_verify_password_reset_returns_reset_token_for_valid_otp(
+    mock_send_email,
+    client,
+):
+    register_verified_user(
+        client,
+        email="reset-verify@example.com",
+        password="Testing123!",
+        display_name="Reset Verify",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        forgot_response = client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "reset-verify@example.com"},
+        )
+
+    assert forgot_response.status_code == 202
+
+    response = client.post(
+        "/api/v1/auth/verify-password-reset",
+        json={
+            "email": "reset-verify@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["reset_token"]
+    assert body["token_type"] == "bearer"
+
+    payload = jwt.decode(
+        body["reset_token"],
+        settings.jwt_secret_key,
+        algorithms=[settings.jwt_algorithm],
+    )
+
+    assert payload["sub"] == "reset-verify@example.com"
+    assert payload["purpose"] == "password_reset"
+    assert payload["exp"]
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_verify_password_reset_rejects_invalid_otp_and_increments_attempts(
+    mock_send_email,
+    client,
+    db,
+):
+    register_verified_user(
+        client,
+        email="reset-wrong@example.com",
+        password="Testing123!",
+        display_name="Reset Wrong",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "reset-wrong@example.com"},
+        )
+
+    response = client.post(
+        "/api/v1/auth/verify-password-reset",
+        json={
+            "email": "reset-wrong@example.com",
+            "otp": "654321",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid verification code"
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == "reset-wrong@example.com"
+        )
+    )
+
+    assert password_reset is not None
+    assert password_reset.attempt_count == 1
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_verify_password_reset_rejects_expired_otp(
+    mock_send_email,
+    client,
+    db,
+):
+    register_verified_user(
+        client,
+        email="reset-expired@example.com",
+        password="Testing123!",
+        display_name="Reset Expired",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "reset-expired@example.com"},
+        )
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == "reset-expired@example.com"
+        )
+    )
+
+    assert password_reset is not None
+
+    password_reset.expires_at = (
+        datetime.now(timezone.utc) - timedelta(minutes=1)
+    )
+    db.commit()
+
+    response = client.post(
+        "/api/v1/auth/verify-password-reset",
+        json={
+            "email": "reset-expired@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Invalid or expired password reset code"
+    )
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_verify_password_reset_blocks_after_max_attempts(
+    mock_send_email,
+    client,
+    db,
+):
+    register_verified_user(
+        client,
+        email="reset-attempts@example.com",
+        password="Testing123!",
+        display_name="Reset Attempts",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "reset-attempts@example.com"},
+        )
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == "reset-attempts@example.com"
+        )
+    )
+
+    assert password_reset is not None
+
+    password_reset.attempt_count = settings.email_otp_max_attempts
+    db.commit()
+
+    response = client.post(
+        "/api/v1/auth/verify-password-reset",
+        json={
+            "email": "reset-attempts@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == (
+        "Too many verification attempts"
+    )
+
+
+def test_verify_password_reset_rejects_missing_reset_request(
+    client,
+):
+    response = client.post(
+        "/api/v1/auth/verify-password-reset",
+        json={
+            "email": "no-reset@example.com",
+            "otp": "123456",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Invalid or expired password reset code"
+    )
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_reset_password_full_flow(
+    mock_send_email,
+    client,
+    db,
+):
+    email = "full-reset@example.com"
+    old_password = "OldPassword123!"
+    new_password = "NewPassword456!"
+
+    register_verified_user(
+        client,
+        email=email,
+        password=old_password,
+        display_name="Full Reset",
+    )
+
+    # Old password works before reset.
+    old_login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": old_password,
+        },
+    )
+    assert old_login.status_code == 200
+
+    # Request reset OTP.
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        forgot_response = client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": email},
+        )
+
+    assert forgot_response.status_code == 202
+
+    # Verify OTP and receive short-lived reset token.
+    verify_response = client.post(
+        "/api/v1/auth/verify-password-reset",
+        json={
+            "email": email,
+            "otp": "123456",
+        },
+    )
+
+    assert verify_response.status_code == 200
+
+    reset_token = verify_response.json()["reset_token"]
+
+    # Change password.
+    reset_response = client.post(
+        "/api/v1/auth/reset-password",
+        json={
+            "reset_token": reset_token,
+            "new_password": new_password,
+        },
+    )
+
+    assert reset_response.status_code == 200
+    assert reset_response.json() == {
+        "message": "Password reset successfully"
+    }
+
+    # Reset request is consumed.
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == email
+        )
+    )
+    assert password_reset is None
+
+    # Old password no longer works.
+    old_login_after_reset = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": old_password,
+        },
+    )
+
+    assert old_login_after_reset.status_code == 401
+
+    # New password works.
+    new_login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": new_password,
+        },
+    )
+
+    assert new_login.status_code == 200
+    assert new_login.json()["access_token"]
+
+    # Same reset token cannot be reused.
+    reuse_response = client.post(
+        "/api/v1/auth/reset-password",
+        json={
+            "reset_token": reset_token,
+            "new_password": "AnotherPassword789!",
+        },
+    )
+
+    assert reuse_response.status_code == 400
+    assert reuse_response.json()["detail"] == (
+        "Invalid or expired password reset token"
+    )
+
+
+def test_reset_password_rejects_invalid_token(
+    client,
+):
+    response = client.post(
+        "/api/v1/auth/reset-password",
+        json={
+            "reset_token": "not-a-valid-token",
+            "new_password": "NewPassword123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Invalid or expired password reset token"
+    )
+
+
+def test_reset_password_rejects_normal_access_token(
+    client,
+):
+    email = "normal-token@example.com"
+    password = "Testing123!"
+
+    register_verified_user(
+        client,
+        email=email,
+        password=password,
+        display_name="Normal Token",
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    access_token = login_response.json()["access_token"]
+
+    response = client.post(
+        "/api/v1/auth/reset-password",
+        json={
+            "reset_token": access_token,
+            "new_password": "NewPassword123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Invalid or expired password reset token"
+    )
+
+
+@patch("app.api.v1.auth.send_password_reset_email")
+def test_reset_password_rejects_expired_reset_record(
+    mock_send_email,
+    client,
+    db,
+):
+    email = "expired-final-reset@example.com"
+
+    register_verified_user(
+        client,
+        email=email,
+        password="Testing123!",
+        display_name="Expired Final Reset",
+    )
+
+    with patch(
+        "app.api.v1.auth.generate_otp",
+        return_value="123456",
+    ):
+        client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": email},
+        )
+
+    verify_response = client.post(
+        "/api/v1/auth/verify-password-reset",
+        json={
+            "email": email,
+            "otp": "123456",
+        },
+    )
+
+    assert verify_response.status_code == 200
+    reset_token = verify_response.json()["reset_token"]
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == email
+        )
+    )
+
+    assert password_reset is not None
+
+    password_reset.expires_at = (
+        datetime.now(timezone.utc) - timedelta(minutes=1)
+    )
+    db.commit()
+
+    response = client.post(
+        "/api/v1/auth/reset-password",
+        json={
+            "reset_token": reset_token,
+            "new_password": "NewPassword123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Invalid or expired password reset token"
+    )

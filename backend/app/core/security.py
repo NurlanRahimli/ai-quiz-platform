@@ -54,3 +54,41 @@ def create_access_token(user_id: str) -> str:
         settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
     )
+
+def create_password_reset_token(email: str) -> str:
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.email_otp_expire_minutes
+    )
+
+    payload = {
+        "sub": email,
+        "purpose": "password_reset",
+        "exp": expires_at,
+    }
+
+    return jwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+
+
+def decode_password_reset_token(token: str) -> str | None:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except jwt.PyJWTError:
+        return None
+
+    if payload.get("purpose") != "password_reset":
+        return None
+
+    email = payload.get("sub")
+
+    if not isinstance(email, str) or not email:
+        return None
+
+    return email

@@ -147,3 +147,48 @@ class UserLogin(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).lower()
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+
+
+class PasswordResetVerificationRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).lower()
+
+    @field_validator("otp")
+    @classmethod
+    def validate_otp(cls, value: str) -> str:
+        if not value.isdigit():
+            raise ValueError(
+                "Verification code must contain only digits"
+            )
+        return value
+
+
+class PasswordResetVerificationResponse(BaseModel):
+    reset_token: str
+    token_type: str = "bearer"
+
+
+class PasswordResetRequest(BaseModel):
+    reset_token: str
+    new_password: str = Field(min_length=8)
+
+
+class PasswordResetResponse(BaseModel):
+    message: str
