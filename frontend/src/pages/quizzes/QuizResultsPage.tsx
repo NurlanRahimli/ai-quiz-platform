@@ -39,6 +39,8 @@ type AnswerResult = {
   correct_answer: string | null
   is_correct: boolean | null
   answer_choices: AnswerChoiceResult[]
+  ai_explanation: string | null
+  whiteboard_image_url: string | null
 }
 
 type QuizResults = {
@@ -529,6 +531,35 @@ function QuizResultsPage() {
                         )}
                       </div>
                     )}
+
+                    {answer.question_type === "math_work" &&
+                      answer.whiteboard_image_url && (
+                        <div className="result-whiteboard">
+                          <span className="result-detail-label">
+                            Your work
+                          </span>
+
+                          <div className="result-whiteboard-image-wrap">
+                            <img
+                              src={answer.whiteboard_image_url}
+                              alt={`Whiteboard work for question ${index + 1}`}
+                              className="result-whiteboard-image"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                    {answer.is_correct === false &&
+                      answer.ai_explanation && (
+                        <div className="result-ai-explanation">
+                          <div className="result-ai-explanation-title">
+                            <span aria-hidden="true">✨</span>
+                            <strong>Explanation</strong>
+                          </div>
+
+                          <p>{answer.ai_explanation}</p>
+                        </div>
+                      )}
                   </div>
                 )}
               </article>

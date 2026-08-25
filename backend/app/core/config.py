@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     email_otp_max_attempts: int = 5
 
     openai_api_key: str | None = None
+    cloudinary_url: str | None = None
     twilio_api_key_sid: str | None = None
     twilio_api_key_secret: str | None = None
     twilio_from_email: str = "no-reply@nurlanquiz.org"

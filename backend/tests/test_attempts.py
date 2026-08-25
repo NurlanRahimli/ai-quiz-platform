@@ -1172,42 +1172,160 @@ def test_math_work_attempt_saves_whiteboard_image(client, db):
         "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
     )
 
-    response = client.post(
-        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
-        headers=headers,
-        json={
-            "answers": [
-                {
-                    "question_id": quiz["multiple_choice"]["id"],
-                    "selected_choice_id": correct_choice["id"],
-                },
-                {
-                    "question_id": quiz["written"]["id"],
-                    "text_answer": "A variable stores a value.",
-                },
-                {
-                    "question_id": quiz["math"]["id"],
-                    "text_answer": "5",
-                    "whiteboard_image": whiteboard_image,
-                },
-            ],
-        },
+    cloudinary_url = (
+        "https://res.cloudinary.com/test-cloud/image/upload/"
+        "quiz-app/whiteboards/test-whiteboard.png"
     )
 
+    with patch(
+        "app.services.whiteboard_storage_service."
+        "cloudinary.uploader.upload",
+        return_value={"secure_url": cloudinary_url},
+    ) as mock_upload:
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                        "whiteboard_image": whiteboard_image,
+                    },
+                ],
+            },
+        )
+
     assert response.status_code == 201
+    mock_upload.assert_called_once()
 
     attempt_id = response.json()["id"]
 
     answer = db.scalar(
         select(QuizAttemptAnswer).where(
             QuizAttemptAnswer.attempt_id == uuid.UUID(attempt_id),
-            QuizAttemptAnswer.question_id == uuid.UUID(quiz["math"]["id"]),
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["math"]["id"]),
         )
     )
 
     assert answer is not None
-    assert answer.whiteboard_image_url is not None
-    assert answer.whiteboard_image_url.endswith(".png")
+    assert answer.whiteboard_image_url == cloudinary_url
+
+    results_response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt_id}/results"
+        ),
+        headers=headers,
+    )
+
+    assert results_response.status_code == 200
+
+    math_result = next(
+        result
+        for result in results_response.json()["answers"]
+        if result["question_id"] == quiz["math"]["id"]
+    )
+
+    assert math_result["whiteboard_image_url"] == cloudinary_url
+
+
+def test_saved_whiteboard_uses_cloudinary_url(client, db):
+    headers = register_and_login(
+        client,
+        email="cloudinary-whiteboard@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    whiteboard_image = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
+    )
+
+    cloudinary_url = (
+        "https://res.cloudinary.com/test-cloud/image/upload/"
+        "quiz-app/whiteboards/saved-whiteboard.png"
+    )
+
+    with patch(
+        "app.services.whiteboard_storage_service."
+        "cloudinary.uploader.upload",
+        return_value={"secure_url": cloudinary_url},
+    ) as mock_upload:
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                        "whiteboard_image": whiteboard_image,
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+    mock_upload.assert_called_once()
+
+    attempt_id = response.json()["id"]
+
+    answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == uuid.UUID(attempt_id),
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["math"]["id"]),
+        )
+    )
+
+    assert answer is not None
+    assert answer.whiteboard_image_url == cloudinary_url
+    assert answer.whiteboard_image_url.startswith(
+        "https://res.cloudinary.com/"
+    )
+
+    results_response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt_id}/results"
+        ),
+        headers=headers,
+    )
+
+    assert results_response.status_code == 200
+
+    math_result = next(
+        result
+        for result in results_response.json()["answers"]
+        if result["question_id"] == quiz["math"]["id"]
+    )
+
+    assert math_result["whiteboard_image_url"] == cloudinary_url
 
 
 def test_written_answer_rejects_whiteboard_image(client):
@@ -1663,6 +1781,30 @@ def test_incorrect_multiple_choice_saves_ai_explanation(
         "The selected answer 3 is incorrect because 2 + 2 equals 4."
     )
 
+    results_response = client.get(
+        (
+            f"/api/v1/quizzes/{quiz['quiz_id']}"
+            f"/attempts/{attempt.id}/results"
+        ),
+        headers=headers,
+    )
+
+    assert results_response.status_code == 200
+
+    multiple_choice_result = next(
+        result
+        for result in results_response.json()["answers"]
+        if result["question_id"] == quiz["multiple_choice"]["id"]
+    )
+
+    assert multiple_choice_result["ai_explanation"] == (
+        "The selected answer 3 is incorrect because 2 + 2 equals 4."
+    )
+
+    # Loading saved results must reuse the persisted explanation rather
+    # than making another AI request.
+    assert mock_explanation.call_count == 1
+
 
 def test_correct_math_work_uses_deterministic_grading_without_ai(
     client,
@@ -1774,6 +1916,12 @@ def test_incorrect_math_work_uses_deterministic_grading_and_ai_explanation(
         ),
     )
 
+    whiteboard_image = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
+    )
+
     with (
         patch(
             "app.api.v1.attempts.evaluate_written_answer",
@@ -1803,6 +1951,7 @@ def test_incorrect_math_work_uses_deterministic_grading_and_ai_explanation(
                     {
                         "question_id": quiz["math"]["id"],
                         "text_answer": "4",
+                        "whiteboard_image": whiteboard_image,
                     },
                 ],
             },
@@ -1816,6 +1965,7 @@ def test_incorrect_math_work_uses_deterministic_grading_and_ai_explanation(
         question_text=quiz["math"]["text"],
         submitted_answer="4",
         correct_answer="5",
+        whiteboard_image=whiteboard_image,
     )
 
     attempt = db.scalar(
@@ -1908,6 +2058,7 @@ def test_non_math_math_work_uses_ai_semantic_grading_when_correct(
         question_text=question["text"],
         submitted_answer="sun",
         expected_answer="The Sun",
+        whiteboard_image=None,
     )
     mock_explanation.assert_not_called()
 
@@ -1973,6 +2124,12 @@ def test_non_math_math_work_uses_ai_semantic_grading_when_incorrect(
         ),
     )
 
+    whiteboard_image = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
+    )
+
     with (
         patch(
             "app.api.v1.attempts.evaluate_math_answer",
@@ -1990,6 +2147,7 @@ def test_non_math_math_work_uses_ai_semantic_grading_when_incorrect(
                     {
                         "question_id": question["id"],
                         "text_answer": "Jupiter",
+                        "whiteboard_image": whiteboard_image,
                     },
                 ],
             },
@@ -2001,6 +2159,7 @@ def test_non_math_math_work_uses_ai_semantic_grading_when_incorrect(
         question_text=question["text"],
         submitted_answer="Jupiter",
         expected_answer="The Sun",
+        whiteboard_image=whiteboard_image,
     )
 
     # The AI evaluation already supplied the explanation,
@@ -2031,3 +2190,162 @@ def test_non_math_math_work_uses_ai_semantic_grading_when_incorrect(
         "Jupiter is a planet, not a star. The Sun is the star "
         "at the center of our solar system."
     )
+
+
+def test_whiteboard_storage_failure_returns_503(client):
+    headers = register_and_login(
+        client,
+        email="whiteboard-storage-failure@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+    whiteboard_image = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
+    )
+
+    with patch(
+        "app.services.whiteboard_storage_service."
+        "cloudinary.uploader.upload",
+        side_effect=RuntimeError("Cloudinary unavailable"),
+    ):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                        "whiteboard_image": whiteboard_image,
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == (
+        "Whiteboard image storage is temporarily unavailable. "
+        "Please try again."
+    )
+
+
+def test_historical_results_reuse_saved_ai_explanation(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="saved-explanation-history@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    incorrect_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if not choice["is_correct"]
+    )
+
+    saved_explanation = (
+        "The selected answer is incorrect. "
+        "The correct answer is 4."
+    )
+
+    explanation = IncorrectAnswerExplanationResponse(
+        explanation=saved_explanation,
+    )
+
+    with (
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+            return_value=explanation,
+        ),
+        patch(
+            "app.api.v1.attempts.evaluate_written_answer",
+            return_value=AnswerEvaluationResponse(
+                is_correct=True,
+                explanation="Correct.",
+            ),
+        ),
+    ):
+        submit_response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": incorrect_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                    },
+                ],
+            },
+        )
+
+    assert submit_response.status_code == 201
+    attempt_id = submit_response.json()["id"]
+
+    stored_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == uuid.UUID(attempt_id),
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["multiple_choice"]["id"]),
+        )
+    )
+
+    assert stored_answer is not None
+    assert stored_answer.ai_explanation == saved_explanation
+
+    with (
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+        ) as mock_explanation,
+        patch(
+            "app.api.v1.attempts.evaluate_written_answer",
+        ) as mock_written_ai,
+        patch(
+            "app.api.v1.attempts.evaluate_math_answer",
+        ) as mock_math_ai,
+    ):
+        response = client.get(
+            (
+                f"/api/v1/quizzes/{quiz['quiz_id']}"
+                f"/attempts/{attempt_id}/results"
+            ),
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+
+    result = next(
+        answer
+        for answer in response.json()["answers"]
+        if answer["question_id"] == quiz["multiple_choice"]["id"]
+    )
+
+    assert result["is_correct"] is False
+    assert result["ai_explanation"] == saved_explanation
+
+    mock_explanation.assert_not_called()
+    mock_written_ai.assert_not_called()
+    mock_math_ai.assert_not_called()

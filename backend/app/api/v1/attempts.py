@@ -647,6 +647,14 @@ def submit_quiz_attempt(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=str(exc),
                 ) from exc
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=(
+                        "Whiteboard image storage is temporarily "
+                        "unavailable. Please try again."
+                    ),
+                ) from exc
 
         ai_is_correct = None
         ai_explanation = None
@@ -733,6 +741,7 @@ def submit_quiz_attempt(
                             question_text=question.text,
                             submitted_answer=submitted_answer.text_answer,
                             correct_answer=question.expected_answer,
+                            whiteboard_image=submitted_answer.whiteboard_image,
                         )
                     except RuntimeError as exc:
                         raise HTTPException(
@@ -751,6 +760,7 @@ def submit_quiz_attempt(
                         question_text=question.text,
                         submitted_answer=submitted_answer.text_answer,
                         expected_answer=question.expected_answer,
+                        whiteboard_image=submitted_answer.whiteboard_image,
                     )
                 except RuntimeError as exc:
                     raise HTTPException(
@@ -985,6 +995,8 @@ def get_quiz_attempt_results(
                 is_correct=is_correct,
                 submitted_answer=submitted_answer,
                 correct_answer=correct_answer,
+                ai_explanation=answer.ai_explanation,
+                whiteboard_image_url=answer.whiteboard_image_url,
             )
         )
 
