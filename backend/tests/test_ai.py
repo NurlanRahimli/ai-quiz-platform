@@ -1,8 +1,16 @@
 from unittest.mock import patch
 
 from app.schemas.ai import (
+    AnswerEvaluationResponse,
     CategorySuggestionResponse,
+    IncorrectAnswerExplanationResponse,
+    MathAnswerEvaluationResponse,
     TagSuggestionResponse,
+)
+from app.services.ai_service import (
+    evaluate_math_answer,
+    evaluate_written_answer,
+    generate_incorrect_answer_explanation,
 )
 from tests.conftest import register_verified_user
 
@@ -220,3 +228,178 @@ def test_suggest_tags_handles_ai_failure(
     assert response.json() == {
         "detail": "Unable to generate tag suggestions right now."
     }
+
+
+def test_evaluate_written_answer_accepts_semantically_correct_answer():
+    parsed_result = AnswerEvaluationResponse(
+        is_correct=True,
+        explanation="Jupiter is the largest planet in the solar system.",
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = evaluate_written_answer(
+            question_text=(
+                "What is the largest planet in the solar system?"
+            ),
+            submitted_answer="jupiter",
+        )
+
+    assert result.is_correct is True
+    assert result.explanation == (
+        "Jupiter is the largest planet in the solar system."
+    )
+    mock_client.responses.parse.assert_called_once()
+
+
+def test_evaluate_written_answer_returns_incorrect_with_explanation():
+    parsed_result = AnswerEvaluationResponse(
+        is_correct=False,
+        explanation=(
+            "Mars is not the largest planet. Jupiter is the "
+            "largest planet in the solar system."
+        ),
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = evaluate_written_answer(
+            question_text=(
+                "What is the largest planet in the solar system?"
+            ),
+            submitted_answer="Mars",
+        )
+
+    assert result.is_correct is False
+    assert "Jupiter" in result.explanation
+    mock_client.responses.parse.assert_called_once()
+
+
+def test_generate_incorrect_answer_explanation():
+    parsed_result = IncorrectAnswerExplanationResponse(
+        explanation=(
+            "Dividing both sides of 2x = 6 by 2 gives x = 3, "
+            "not x = 2."
+        ),
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = generate_incorrect_answer_explanation(
+            question_text="Solve: 2x + 4 = 10",
+            submitted_answer="x = 2",
+            correct_answer="x = 3",
+        )
+
+    assert "x = 3" in result.explanation
+    mock_client.responses.parse.assert_called_once()
+
+
+def test_evaluate_written_answer_raises_when_ai_returns_no_result():
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = None
+
+        try:
+            evaluate_written_answer(
+                question_text="What is Python?",
+                submitted_answer="A programming language.",
+            )
+        except RuntimeError as exc:
+            assert str(exc) == (
+                "OpenAI did not return an answer evaluation"
+            )
+        else:
+            raise AssertionError("Expected RuntimeError")
+
+
+def test_generate_explanation_raises_when_ai_returns_no_result():
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = None
+
+        try:
+            generate_incorrect_answer_explanation(
+                question_text="What is 2 + 2?",
+                submitted_answer="5",
+                correct_answer="4",
+            )
+        except RuntimeError as exc:
+            assert str(exc) == (
+                "OpenAI did not return an incorrect-answer explanation"
+            )
+        else:
+            raise AssertionError("Expected RuntimeError")
+
+def test_evaluate_math_answer_accepts_equivalent_answer():
+    parsed_result = MathAnswerEvaluationResponse(
+        is_correct=True,
+        explanation="6 / 2 is equivalent to 3.",
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = evaluate_math_answer(
+            question_text="Solve x = 6 / 2.",
+            submitted_answer="3.0",
+            expected_answer="3",
+        )
+
+    assert result.is_correct is True
+    assert result.explanation == "6 / 2 is equivalent to 3."
+    mock_client.responses.parse.assert_called_once()
+
+
+def test_evaluate_math_answer_supports_non_math_semantic_answer():
+    parsed_result = MathAnswerEvaluationResponse(
+        is_correct=True,
+        explanation=(
+            "The submitted answer has the same meaning as the "
+            "expected answer."
+        ),
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = evaluate_math_answer(
+            question_text="What is the star at the center of our solar system?",
+            submitted_answer="sun",
+            expected_answer="The Sun",
+        )
+
+    assert result.is_correct is True
+    mock_client.responses.parse.assert_called_once()
+
+
+def test_evaluate_math_answer_returns_incorrect_with_explanation():
+    parsed_result = MathAnswerEvaluationResponse(
+        is_correct=False,
+        explanation=(
+            "Subtracting 4 gives 2x = 6. Dividing both sides "
+            "by 2 gives x = 3, not x = 2."
+        ),
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = evaluate_math_answer(
+            question_text="Solve: 2x + 4 = 10",
+            submitted_answer="x = 2",
+            expected_answer="x = 3",
+        )
+
+    assert result.is_correct is False
+    assert "x = 3" in result.explanation
+    mock_client.responses.parse.assert_called_once()

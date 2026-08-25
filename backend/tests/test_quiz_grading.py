@@ -49,6 +49,7 @@ def test_grades_equivalent_math_answer():
     answer = SimpleNamespace(
         selected_choice_id=None,
         text_answer="2*x + 2*x",
+        ai_is_correct=None,
     )
 
     assert grade_attempt_answer(question, answer) is True
@@ -62,6 +63,7 @@ def test_grades_incorrect_math_answer():
     answer = SimpleNamespace(
         selected_choice_id=None,
         text_answer="5*x",
+        ai_is_correct=None,
     )
 
     assert grade_attempt_answer(question, answer) is False
@@ -74,6 +76,7 @@ def test_written_answer_is_not_automatically_graded():
     answer = SimpleNamespace(
         selected_choice_id=None,
         text_answer="Closures preserve access to their lexical scope.",
+        ai_is_correct=None,
     )
 
     assert grade_attempt_answer(question, answer) is None

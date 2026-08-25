@@ -16,16 +16,19 @@ def grade_attempt_answer(
             for choice in question.answer_choices
         )
 
+    if question.question_type == "written_answer":
+        return answer.ai_is_correct
+
     if question.question_type == "math_work":
+        if answer.ai_is_correct is not None:
+            return answer.ai_is_correct
+
         if not answer.text_answer or not question.expected_answer:
-            return False
+            return None
 
         return are_math_expressions_equivalent(
             answer.text_answer,
             question.expected_answer,
         )
-
-    if question.question_type == "written_answer":
-        return None
 
     return None

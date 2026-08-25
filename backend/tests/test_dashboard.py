@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.models.quiz_attempt import QuizAttempt
+from app.models.quiz_attempt_answer import QuizAttemptAnswer
 from tests.conftest import register_verified_user
 
 
@@ -19,6 +20,28 @@ def set_attempt_submitted_at(
     assert attempt is not None
 
     attempt.submitted_at = submitted_at
+    db.commit()
+
+
+def set_attempt_answers_ungraded(
+    db,
+    *,
+    attempt_id,
+):
+    attempt_uuid = uuid.UUID(attempt_id)
+
+    answers = (
+        db.query(QuizAttemptAnswer)
+        .filter(QuizAttemptAnswer.attempt_id == attempt_uuid)
+        .all()
+    )
+
+    assert answers
+
+    for answer in answers:
+        answer.ai_is_correct = None
+        answer.ai_explanation = None
+
     db.commit()
 
 
@@ -592,6 +615,7 @@ def submit_written_attempt(
 
 def test_dashboard_performance_excludes_non_gradable_attempts(
     client,
+    db,
 ):
     headers = register_and_login(
         client,
@@ -619,11 +643,16 @@ def test_dashboard_performance_excludes_non_gradable_attempts(
         correct=True,
     )
 
-    submit_written_attempt(
+    written_attempt = submit_written_attempt(
         client,
         headers,
         quiz=written_quiz,
         question=written_question,
+    )
+
+    set_attempt_answers_ungraded(
+        db,
+        attempt_id=written_attempt["id"],
     )
 
     response = client.get(

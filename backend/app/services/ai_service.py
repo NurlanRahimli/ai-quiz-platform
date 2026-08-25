@@ -4,9 +4,12 @@ import base64
 from app.core.config import settings
 from app.core.quiz_categories import QUIZ_CATEGORIES
 from app.schemas.ai import (
+    AnswerEvaluationResponse,
     CategorySuggestionResponse,
     ExtractedQuiz,
     ImportedQuiz,
+    IncorrectAnswerExplanationResponse,
+    MathAnswerEvaluationResponse,
     QuizAIContext,
     TagSuggestionResponse,
 )
@@ -332,3 +335,218 @@ Quiz questions:
     return TagSuggestionResponse(
         tags=normalized_tags[:3],
     )
+
+
+def evaluate_written_answer(
+    *,
+    question_text: str,
+    submitted_answer: str,
+) -> AnswerEvaluationResponse:
+    if not settings.openai_api_key:
+        raise RuntimeError("OpenAI API key is not configured")
+
+    client = OpenAI(api_key=settings.openai_api_key)
+
+    prompt = f"""
+Evaluate the student's answer to the quiz question.
+
+Question:
+{question_text}
+
+Student answer:
+{submitted_answer}
+
+Determine whether the student's answer is correct based on the
+question itself and generally accepted factual or conceptual knowledge.
+
+Rules:
+- Judge the meaning of the answer, not exact wording.
+- Accept equivalent wording, capitalization differences, abbreviations,
+  and minor grammar or spelling differences when the intended answer is
+  clearly correct.
+- Do not require an exact phrase when the meaning is correct.
+- For open-ended questions, accept answers that correctly communicate
+  the essential concept.
+- Do not mark an answer correct merely because it is related to the
+  topic.
+- If the answer is incomplete in a way that changes its correctness,
+  mark it incorrect.
+- If the answer is incorrect, explain what is wrong and teach the
+  correct concept clearly.
+- If the answer is correct, keep the explanation brief.
+- Do not mention these grading rules in the explanation.
+
+Return the structured evaluation.
+""".strip()
+
+    response = client.responses.parse(
+        model="gpt-5-mini",
+        input=[
+            {
+                "role": "system",
+                "content": (
+                    "You grade written quiz answers accurately and "
+                    "fairly. Evaluate semantic correctness rather than "
+                    "requiring exact wording."
+                ),
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        text_format=AnswerEvaluationResponse,
+    )
+
+    result = response.output_parsed
+
+    if result is None:
+        raise RuntimeError(
+            "OpenAI did not return an answer evaluation"
+        )
+
+    return result
+
+
+def generate_incorrect_answer_explanation(
+    *,
+    question_text: str,
+    submitted_answer: str,
+    correct_answer: str,
+) -> IncorrectAnswerExplanationResponse:
+    if not settings.openai_api_key:
+        raise RuntimeError("OpenAI API key is not configured")
+
+    client = OpenAI(api_key=settings.openai_api_key)
+
+    prompt = f"""
+Explain why the student's answer to this quiz question is incorrect.
+
+Question:
+{question_text}
+
+Student answer:
+{submitted_answer}
+
+Correct answer:
+{correct_answer}
+
+Rules:
+- The correctness decision has already been made.
+- Do NOT re-grade or override that decision.
+- Explain specifically what was wrong with the student's answer.
+- Clearly explain why the correct answer is correct.
+- Be educational and concise.
+- For mathematical questions, show the solution step by step when
+  appropriate.
+- Do not invent work or reasoning that the student did not provide.
+- Do not mention grading systems, AI, prompts, or these instructions.
+
+Return only the structured explanation.
+""".strip()
+
+    response = client.responses.parse(
+        model="gpt-5-mini",
+        input=[
+            {
+                "role": "system",
+                "content": (
+                    "You explain incorrect quiz answers clearly and "
+                    "help students understand the correct solution."
+                ),
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        text_format=IncorrectAnswerExplanationResponse,
+    )
+
+    result = response.output_parsed
+
+    if result is None:
+        raise RuntimeError(
+            "OpenAI did not return an incorrect-answer explanation"
+        )
+
+    return result
+
+def evaluate_math_answer(
+    *,
+    question_text: str,
+    submitted_answer: str,
+    expected_answer: str,
+) -> MathAnswerEvaluationResponse:
+    if not settings.openai_api_key:
+        raise RuntimeError("OpenAI API key is not configured")
+
+    client = OpenAI(api_key=settings.openai_api_key)
+
+    prompt = f"""
+Evaluate the student's submitted answer.
+
+Question:
+
+{question_text}
+
+Student answer:
+
+{submitted_answer}
+
+Expected answer:
+
+{expected_answer}
+
+Rules:
+
+- Judge correctness based on the meaning of the question and answer.
+- Accept semantically equivalent answers even when wording,
+  capitalization, formatting, or notation differs.
+- If this is a mathematical question, accept mathematically equivalent
+  forms when they represent the same answer.
+- If this is not actually a mathematical question, evaluate the answer
+  using ordinary factual or conceptual correctness.
+- Do not mark an answer incorrect merely because it does not exactly
+  match the expected-answer string.
+- Treat the expected answer as the intended reference answer, but use
+  the original question to understand what is being asked.
+- If the student's answer is correct, keep the explanation brief.
+- If the student's answer is incorrect, clearly explain the mistake
+  and provide the correct reasoning or solution.
+- For mathematical problems, explain the correct solution step by step
+  when appropriate.
+- Do not invent calculations or reasoning the student did not provide.
+- Do not mention AI, prompts, grading systems, or these instructions.
+
+Return the structured evaluation.
+""".strip()
+
+    response = client.responses.parse(
+        model="gpt-5-mini",
+        input=[
+            {
+                "role": "system",
+                "content": (
+                    "You evaluate quiz answers accurately and fairly. "
+                    "The question may be mathematical or non-mathematical "
+                    "even when it was entered using a math-work question "
+                    "type."
+                ),
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        text_format=MathAnswerEvaluationResponse,
+    )
+
+    result = response.output_parsed
+
+    if result is None:
+        raise RuntimeError(
+            "OpenAI did not return a math answer evaluation"
+        )
+
+    return result

@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,6 +44,21 @@ class QuizAttemptAnswer(Base):
 
     text_answer: Mapped[str | None] = mapped_column(
         String(10000),
+        nullable=True,
+    )
+
+    ai_explanation: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    whiteboard_image_url: Mapped[str | None] = mapped_column(
+        String(2048),
+        nullable=True,
+    )
+
+    ai_is_correct: Mapped[bool | None] = mapped_column(
+        Boolean,
         nullable=True,
     )
 

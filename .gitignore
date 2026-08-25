@@ -30,3 +30,5 @@ dist/
 # Credentials
 credentials.json
 *.pem
+# Runtime uploads
+backend/uploads/

@@ -1,10 +1,18 @@
 import uuid
-from tests.conftest import register_verified_user
+
+from unittest.mock import patch
 
 from sqlalchemy import func, select
 
 from app.models.audit_log import AuditLog
 from app.models.quiz_attempt import QuizAttempt
+from app.models.quiz_attempt_answer import QuizAttemptAnswer
+from app.schemas.ai import (
+    AnswerEvaluationResponse,
+    IncorrectAnswerExplanationResponse,
+    MathAnswerEvaluationResponse,
+)
+from tests.conftest import register_verified_user
 
 
 def register_and_login(
@@ -337,8 +345,8 @@ def test_get_quiz_attempt_results(client):
 
     assert data["attempt_id"] == attempt_id
     assert data["quiz_id"] == quiz["quiz_id"]
-    assert data["score"] == 2
-    assert data["gradable_questions"] == 2
+    assert data["score"] == 3
+    assert data["gradable_questions"] == 3
     assert data["total_questions"] == 3
 
     results = {
@@ -378,7 +386,7 @@ def test_get_quiz_attempt_results(client):
     assert results["math_work"]["submitted_answer"] == "5"
     assert results["math_work"]["correct_answer"] == "5"
 
-    assert results["written_answer"]["is_correct"] is None
+    assert results["written_answer"]["is_correct"] is True
     assert results["written_answer"]["correct_answer"] is None
 
 
@@ -453,7 +461,7 @@ def test_results_show_incorrect_answers(client):
     assert correct_option["was_selected"] is False
 
     assert data["score"] == 0
-    assert data["gradable_questions"] == 2
+    assert data["gradable_questions"] == 3
     assert data["total_questions"] == 3
 
     graded_answers = [
@@ -462,7 +470,7 @@ def test_results_show_incorrect_answers(client):
         if answer["is_correct"] is not None
     ]
 
-    assert len(graded_answers) == 2
+    assert len(graded_answers) == 3
     assert all(
         answer["is_correct"] is False
         for answer in graded_answers
@@ -569,8 +577,8 @@ def test_get_quiz_attempt_history(client):
 
     assert len(data) == 1
     assert data[0]["attempt_id"] == submit_response.json()["id"]
-    assert data[0]["score"] == 2
-    assert data[0]["gradable_questions"] == 2
+    assert data[0]["score"] == 3
+    assert data[0]["gradable_questions"] == 3
     assert data[0]["total_questions"] == 3
     assert data[0]["submitted_at"] is not None
 
@@ -1143,3 +1151,883 @@ def test_cannot_export_another_users_quiz_attempt_results_pdf(client):
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Quiz attempt not found"
+
+
+def test_math_work_attempt_saves_whiteboard_image(client, db):
+    headers = register_and_login(
+        client,
+        email="whiteboard-save@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    whiteboard_image = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                    "whiteboard_image": whiteboard_image,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+
+    attempt_id = response.json()["id"]
+
+    answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == uuid.UUID(attempt_id),
+            QuizAttemptAnswer.question_id == uuid.UUID(quiz["math"]["id"]),
+        )
+    )
+
+    assert answer is not None
+    assert answer.whiteboard_image_url is not None
+    assert answer.whiteboard_image_url.endswith(".png")
+
+
+def test_written_answer_rejects_whiteboard_image(client):
+    headers = register_and_login(
+        client,
+        email="written-whiteboard@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                    "whiteboard_image": (
+                        "data:image/png;base64,"
+                        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+                    ),
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_multiple_choice_rejects_whiteboard_image(client):
+    headers = register_and_login(
+        client,
+        email="choice-whiteboard@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                    "whiteboard_image": (
+                        "data:image/png;base64,"
+                        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+                    ),
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_math_work_rejects_invalid_whiteboard_image(client):
+    headers = register_and_login(
+        client,
+        email="invalid-whiteboard@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                    "whiteboard_image": "this-is-not-a-valid-image",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_math_work_without_whiteboard_is_allowed(client):
+    headers = register_and_login(
+        client,
+        email="no-whiteboard@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+
+
+def test_correct_written_answer_saves_ai_grading_without_explanation(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="correct-written-ai@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    evaluation = AnswerEvaluationResponse(
+        is_correct=True,
+        explanation="The answer correctly explains the concept.",
+    )
+
+    with patch(
+        "app.api.v1.attempts.evaluate_written_answer",
+        return_value=evaluation,
+    ) as mock_evaluate:
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+
+    mock_evaluate.assert_called_once_with(
+        question_text=quiz["written"]["text"],
+        submitted_answer="A variable stores a value.",
+    )
+
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .where(QuizAttempt.quiz_id == uuid.UUID(quiz["quiz_id"]))
+        .order_by(QuizAttempt.submitted_at.desc())
+    )
+    assert attempt is not None
+
+    written_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt.id,
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["written"]["id"]),
+        )
+    )
+
+    assert written_answer is not None
+    assert written_answer.ai_is_correct is True
+    assert written_answer.ai_explanation is None
+def test_incorrect_written_answer_saves_ai_grading_and_explanation(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="incorrect-written-ai@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    evaluation = AnswerEvaluationResponse(
+        is_correct=False,
+        explanation=(
+            "A variable stores a value; it does not define a reusable "
+            "block of code."
+        ),
+    )
+
+    with patch(
+        "app.api.v1.attempts.evaluate_written_answer",
+        return_value=evaluation,
+    ) as mock_evaluate:
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "It repeats code forever.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+
+    mock_evaluate.assert_called_once_with(
+        question_text=quiz["written"]["text"],
+        submitted_answer="It repeats code forever.",
+    )
+
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz["quiz_id"])
+        )
+        .order_by(QuizAttempt.submitted_at.desc())
+    )
+
+    assert attempt is not None
+
+    written_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt.id,
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["written"]["id"]),
+        )
+    )
+
+    assert written_answer is not None
+    assert written_answer.ai_is_correct is False
+    assert written_answer.ai_explanation == (
+        "A variable stores a value; it does not define a reusable "
+        "block of code."
+    )
+
+
+def test_correct_multiple_choice_does_not_generate_ai_explanation(
+    client,
+):
+    headers = register_and_login(
+        client,
+        email="correct-mc-ai@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    written_evaluation = AnswerEvaluationResponse(
+        is_correct=True,
+        explanation="The written answer is correct.",
+    )
+
+    with (
+        patch(
+            "app.api.v1.attempts.evaluate_written_answer",
+            return_value=written_evaluation,
+        ),
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+        ) as mock_explanation,
+    ):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+    mock_explanation.assert_not_called()
+
+
+def test_incorrect_multiple_choice_saves_ai_explanation(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="incorrect-mc-ai@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    incorrect_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if not choice["is_correct"]
+    )
+
+    written_evaluation = AnswerEvaluationResponse(
+        is_correct=True,
+        explanation="The written answer is correct.",
+    )
+
+    explanation = IncorrectAnswerExplanationResponse(
+        explanation=(
+            "The selected answer 3 is incorrect because 2 + 2 equals 4."
+        ),
+    )
+
+    with (
+        patch(
+            "app.api.v1.attempts.evaluate_written_answer",
+            return_value=written_evaluation,
+        ),
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+            return_value=explanation,
+        ) as mock_explanation,
+    ):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": incorrect_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "5",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+
+    mock_explanation.assert_called_once_with(
+        question_text=quiz["multiple_choice"]["text"],
+        submitted_answer="3",
+        correct_answer="4",
+    )
+
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz["quiz_id"])
+        )
+        .order_by(QuizAttempt.submitted_at.desc())
+    )
+
+    assert attempt is not None
+
+    multiple_choice_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt.id,
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["multiple_choice"]["id"]),
+        )
+    )
+
+    assert multiple_choice_answer is not None
+    assert multiple_choice_answer.ai_explanation == (
+        "The selected answer 3 is incorrect because 2 + 2 equals 4."
+    )
+
+
+def test_correct_math_work_uses_deterministic_grading_without_ai(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="correct-math-deterministic@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    written_evaluation = AnswerEvaluationResponse(
+        is_correct=True,
+        explanation="The written answer is correct.",
+    )
+
+    with (
+        patch(
+            "app.api.v1.attempts.evaluate_written_answer",
+            return_value=written_evaluation,
+        ),
+        patch(
+            "app.api.v1.attempts.evaluate_math_answer",
+        ) as mock_math_ai,
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+        ) as mock_explanation,
+    ):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "10 / 2",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+
+    mock_math_ai.assert_not_called()
+    mock_explanation.assert_not_called()
+
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz["quiz_id"])
+        )
+        .order_by(QuizAttempt.submitted_at.desc())
+    )
+
+    assert attempt is not None
+
+    math_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt.id,
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["math"]["id"]),
+        )
+    )
+
+    assert math_answer is not None
+    assert math_answer.ai_is_correct is True
+    assert math_answer.ai_explanation is None
+
+
+def test_incorrect_math_work_uses_deterministic_grading_and_ai_explanation(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="incorrect-math-deterministic@example.com",
+    )
+    quiz = create_quiz_with_questions(client, headers)
+
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
+    )
+
+    written_evaluation = AnswerEvaluationResponse(
+        is_correct=True,
+        explanation="The written answer is correct.",
+    )
+
+    explanation = IncorrectAnswerExplanationResponse(
+        explanation=(
+            "The answer 4 is incorrect. Dividing both sides of "
+            "2x = 10 by 2 gives x = 5."
+        ),
+    )
+
+    with (
+        patch(
+            "app.api.v1.attempts.evaluate_written_answer",
+            return_value=written_evaluation,
+        ),
+        patch(
+            "app.api.v1.attempts.evaluate_math_answer",
+        ) as mock_math_ai,
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+            return_value=explanation,
+        ) as mock_explanation,
+    ):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": quiz["multiple_choice"]["id"],
+                        "selected_choice_id": correct_choice["id"],
+                    },
+                    {
+                        "question_id": quiz["written"]["id"],
+                        "text_answer": "A variable stores a value.",
+                    },
+                    {
+                        "question_id": quiz["math"]["id"],
+                        "text_answer": "4",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+
+    mock_math_ai.assert_not_called()
+
+    mock_explanation.assert_called_once_with(
+        question_text=quiz["math"]["text"],
+        submitted_answer="4",
+        correct_answer="5",
+    )
+
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz["quiz_id"])
+        )
+        .order_by(QuizAttempt.submitted_at.desc())
+    )
+
+    assert attempt is not None
+
+    math_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt.id,
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(quiz["math"]["id"]),
+        )
+    )
+
+    assert math_answer is not None
+    assert math_answer.ai_is_correct is False
+    assert math_answer.ai_explanation == (
+        "The answer 4 is incorrect. Dividing both sides of "
+        "2x = 10 by 2 gives x = 5."
+    )
+
+
+def test_non_math_math_work_uses_ai_semantic_grading_when_correct(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="semantic-math-work@example.com",
+    )
+
+    quiz_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Semantic Math Work Test",
+            "description": "Tests AI fallback for non-math answers.",
+        },
+    )
+    assert quiz_response.status_code == 201
+    quiz_id = quiz_response.json()["id"]
+
+    question_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=headers,
+        json={
+            "text": "What is the star at the center of our solar system?",
+            "expected_answer": "The Sun",
+        },
+    )
+    assert question_response.status_code == 201
+    question = question_response.json()
+
+    evaluation = MathAnswerEvaluationResponse(
+        is_correct=True,
+        explanation="The Sun is the star at the center of the solar system.",
+    )
+
+    with (
+        patch(
+            "app.api.v1.attempts.evaluate_math_answer",
+            return_value=evaluation,
+        ) as mock_math_ai,
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+        ) as mock_explanation,
+    ):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz_id}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": question["id"],
+                        "text_answer": "sun",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+
+    mock_math_ai.assert_called_once_with(
+        question_text=question["text"],
+        submitted_answer="sun",
+        expected_answer="The Sun",
+    )
+    mock_explanation.assert_not_called()
+
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz_id)
+        )
+        .order_by(QuizAttempt.submitted_at.desc())
+    )
+
+    assert attempt is not None
+
+    math_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt.id,
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(question["id"]),
+        )
+    )
+
+    assert math_answer is not None
+    assert math_answer.ai_is_correct is True
+    assert math_answer.ai_explanation is None
+
+
+def test_non_math_math_work_uses_ai_semantic_grading_when_incorrect(
+    client,
+    db,
+):
+    headers = register_and_login(
+        client,
+        email="semantic-math-work-incorrect@example.com",
+    )
+
+    quiz_response = client.post(
+        "/api/v1/quizzes",
+        headers=headers,
+        json={
+            "title": "Semantic Math Work Incorrect Test",
+            "description": "Tests incorrect AI fallback.",
+        },
+    )
+    assert quiz_response.status_code == 201
+    quiz_id = quiz_response.json()["id"]
+
+    question_response = client.post(
+        f"/api/v1/quizzes/{quiz_id}/questions/math-work",
+        headers=headers,
+        json={
+            "text": "What is the star at the center of our solar system?",
+            "expected_answer": "The Sun",
+        },
+    )
+    assert question_response.status_code == 201
+    question = question_response.json()
+
+    evaluation = MathAnswerEvaluationResponse(
+        is_correct=False,
+        explanation=(
+            "Jupiter is a planet, not a star. The Sun is the star "
+            "at the center of our solar system."
+        ),
+    )
+
+    with (
+        patch(
+            "app.api.v1.attempts.evaluate_math_answer",
+            return_value=evaluation,
+        ) as mock_math_ai,
+        patch(
+            "app.api.v1.attempts.generate_incorrect_answer_explanation",
+        ) as mock_explanation,
+    ):
+        response = client.post(
+            f"/api/v1/quizzes/{quiz_id}/attempts",
+            headers=headers,
+            json={
+                "answers": [
+                    {
+                        "question_id": question["id"],
+                        "text_answer": "Jupiter",
+                    },
+                ],
+            },
+        )
+
+    assert response.status_code == 201
+
+    mock_math_ai.assert_called_once_with(
+        question_text=question["text"],
+        submitted_answer="Jupiter",
+        expected_answer="The Sun",
+    )
+
+    # The AI evaluation already supplied the explanation,
+    # so the separate explanation service should not run.
+    mock_explanation.assert_not_called()
+
+    attempt = db.scalar(
+        select(QuizAttempt)
+        .where(
+            QuizAttempt.quiz_id == uuid.UUID(quiz_id)
+        )
+        .order_by(QuizAttempt.submitted_at.desc())
+    )
+
+    assert attempt is not None
+
+    math_answer = db.scalar(
+        select(QuizAttemptAnswer).where(
+            QuizAttemptAnswer.attempt_id == attempt.id,
+            QuizAttemptAnswer.question_id
+            == uuid.UUID(question["id"]),
+        )
+    )
+
+    assert math_answer is not None
+    assert math_answer.ai_is_correct is False
+    assert math_answer.ai_explanation == (
+        "Jupiter is a planet, not a star. The Sun is the star "
+        "at the center of our solar system."
+    )
