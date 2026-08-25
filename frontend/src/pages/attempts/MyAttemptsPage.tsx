@@ -9,7 +9,6 @@ import axios from "axios";
 import apiClient from "../../api/client";
 
 import {
-    Download,
     Search,
 } from "lucide-react";
 
@@ -183,18 +182,7 @@ export default function MyAttemptsPage() {
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        className="my-attempts-page__export"
-                        title="Export will be available soon"
-                    >
-                        <Download
-                            size={17}
-                            strokeWidth={1.9}
-                            aria-hidden="true"
-                        />
-                        Export
-                    </button>
+                    
                 </header>
 
                 <section

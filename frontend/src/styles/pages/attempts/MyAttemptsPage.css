@@ -44,58 +44,6 @@
 
 
 /* =========================================================
-   EXPORT BUTTON
-   ========================================================= */
-
-.my-attempts-page__export {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    min-height: 43px;
-    padding: 0 16px;
-
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 12px;
-
-    background: var(--color-surface);
-    color: var(--color-text-primary);
-
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 650;
-
-    cursor: pointer;
-
-    transition:
-        border-color 0.2s ease,
-        background 0.2s ease,
-        color 0.2s ease,
-        box-shadow 0.2s ease,
-        transform 0.2s ease;
-}
-
-.my-attempts-page__export svg {
-    color: var(--color-primary-400);
-}
-
-.my-attempts-page__export:hover {
-    border-color: rgb(139 92 246 / 28%);
-    background: rgb(124 58 237 / 7%);
-    color: var(--color-primary-400);
-    transform: translateY(-1px);
-}
-
-.my-attempts-page__export:focus-visible {
-    outline: none;
-    border-color: var(--color-primary-400);
-    box-shadow: 0 0 0 3px rgb(139 92 246 / 12%);
-}
-
-
-/* =========================================================
    FILTER TOOLBAR
    ========================================================= */
 
@@ -639,10 +587,6 @@
 
     .my-attempts-page__header p {
         font-size: 0.88rem;
-    }
-
-    .my-attempts-page__export {
-        align-self: flex-start;
     }
 
 

@@ -32,6 +32,9 @@ def test_build_quiz_result_pdf_returns_valid_pdf():
             submitted_answer="4",
             correct_answer="5",
             answer_choices=[],
+            ai_explanation=(
+                "Subtract 5 from both sides to get x = 5."
+            ),
         ),
     ]
 

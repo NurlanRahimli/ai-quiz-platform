@@ -282,7 +282,10 @@ def build_quiz_result_pdf(
                 ]
             )
 
-        if answer.is_correct is None:
+        if (
+            answer.is_correct is False
+            and answer.ai_explanation
+        ):
             question_content.extend(
                 [
                     Spacer(1, 10),
@@ -291,8 +294,8 @@ def build_quiz_result_pdf(
                             [
                                 Paragraph(
                                     (
-                                        "<b>AI EXPLANATION</b><br/>"
-                                        "AI explanation coming soon."
+                                        "<b>EXPLANATION</b><br/>"
+                                        f"{answer.ai_explanation}"
                                     ),
                                     ai_style,
                                 )
