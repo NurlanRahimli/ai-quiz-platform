@@ -5,7 +5,8 @@ import {
   Compass,
   History,
   ScrollText,
-  ScanText
+  ScanText,
+  Settings
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -42,9 +43,12 @@ export default function Sidebar({
         }`}
     >
       <div className="app-sidebar__brand">
-        <div className="app-sidebar__logo" aria-hidden="true">
-          Q
-        </div>
+        <img
+          src="/quizapp-logo.svg"
+          alt=""
+          className="app-sidebar__logo"
+          aria-hidden="true"
+        />
 
         <span className="app-sidebar__brand-name">QuizApp</span>
       </div>
@@ -57,7 +61,8 @@ export default function Sidebar({
             to="/dashboard"
             onClick={onClose}
             className={({ isActive }) =>
-              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              `app-sidebar__link ${
+                isActive ? "app-sidebar__link--active" : ""
               }`
             }
           >
@@ -74,7 +79,8 @@ export default function Sidebar({
             to="/discover"
             onClick={onClose}
             className={({ isActive }) =>
-              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              `app-sidebar__link ${
+                isActive ? "app-sidebar__link--active" : ""
               }`
             }
           >
@@ -91,7 +97,8 @@ export default function Sidebar({
             to="/attempts"
             onClick={onClose}
             className={({ isActive }) =>
-              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              `app-sidebar__link ${
+                isActive ? "app-sidebar__link--active" : ""
               }`
             }
           >
@@ -103,12 +110,17 @@ export default function Sidebar({
             />
             My Attempts
           </NavLink>
+        </div>
+
+        <div className="app-sidebar__section">
+          <span className="app-sidebar__section-label">Create</span>
 
           <NavLink
             to="/quizzes/new"
             onClick={onClose}
             className={({ isActive }) =>
-              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              `app-sidebar__link ${
+                isActive ? "app-sidebar__link--active" : ""
               }`
             }
           >
@@ -125,7 +137,8 @@ export default function Sidebar({
             to="/import-quiz"
             onClick={onClose}
             className={({ isActive }) =>
-              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              `app-sidebar__link ${
+                isActive ? "app-sidebar__link--active" : ""
               }`
             }
           >
@@ -137,12 +150,17 @@ export default function Sidebar({
             />
             Import Quiz
           </NavLink>
+        </div>
+
+        <div className="app-sidebar__section">
+          <span className="app-sidebar__section-label">Manage</span>
 
           <NavLink
             to="/audit-log"
             onClick={onClose}
             className={({ isActive }) =>
-              `app-sidebar__link ${isActive ? "app-sidebar__link--active" : ""
+              `app-sidebar__link ${
+                isActive ? "app-sidebar__link--active" : ""
               }`
             }
           >
@@ -184,6 +202,23 @@ export default function Sidebar({
             </span>
           </div>
         </button>
+
+        <NavLink
+          to="/settings"
+          onClick={onClose}
+          className={({ isActive }) =>
+            `app-sidebar__footer-link ${
+              isActive ? "app-sidebar__footer-link--active" : ""
+            }`
+          }
+        >
+          <Settings
+            size={18}
+            strokeWidth={1.9}
+            aria-hidden="true"
+          />
+          Settings
+        </NavLink>
 
         <button
           type="button"
