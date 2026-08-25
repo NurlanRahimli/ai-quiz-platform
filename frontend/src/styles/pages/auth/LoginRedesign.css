@@ -485,9 +485,15 @@
 }
 
 .login-input:focus-within {
-    border-color: #7c3aed;
-    background: #091329;
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.11);
+    border-color: rgba(139, 92, 246, 0.8);
+    box-shadow:
+        0 0 0 3px rgba(124, 58, 237, 0.09),
+        0 0 20px rgba(124, 58, 237, 0.04);
+}
+
+.login-input:focus-within > svg,
+.login-input:focus-within .login-password-toggle {
+    color: #9b7cff;
 }
 
 .login-input>svg {
@@ -760,4 +766,73 @@
     .login-submit {
         height: 54px;
     }
+}
+/* Keep login fields visually unified, including browser autofill */
+
+.login-input input,
+.login-input input:focus,
+.login-input input:active {
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Chrome / Safari saved credential autofill */
+.login-input input:-webkit-autofill,
+.login-input input:-webkit-autofill:hover,
+.login-input input:-webkit-autofill:focus,
+.login-input input:-webkit-autofill:active {
+    -webkit-text-fill-color: #f8fafc !important;
+    caret-color: #f8fafc;
+    -webkit-box-shadow: 0 0 0 1000px #081226 inset !important;
+    box-shadow: 0 0 0 1000px #081226 inset !important;
+    transition: background-color 9999s ease-out 0s;
+}
+
+/* Firefox autofill */
+.login-input input:autofill {
+    background: #081226 !important;
+    color: #f8fafc !important;
+}
+
+/* FORGOT PASSWORD */
+
+.login-field__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 9px;
+}
+
+.login-field__header label {
+    margin-bottom: 0;
+}
+
+.login-forgot-password {
+    color: #9b6cf5;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 150ms ease;
+}
+
+.login-forgot-password:hover {
+    color: #b794f7;
+    text-decoration: underline;
+}
+
+/* Password recovery back link */
+
+.login-switch > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+}
+
+.login-switch > a svg {
+    flex-shrink: 0;
+    display: block;
+    margin: 0 !important;
 }

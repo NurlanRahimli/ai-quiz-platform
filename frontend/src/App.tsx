@@ -1,10 +1,13 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/useAuth";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 import AppShell from "./components/layout/AppShell";
 
 import LoginPage from "./pages/auth/LoginPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import VerifyPasswordResetPage from "./pages/auth/VerifyPasswordResetPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
@@ -22,6 +25,7 @@ import AuditLogPage from "./pages/audit/AuditLogPage";
 import MyAttemptsPage from "./pages/attempts/MyAttemptsPage";
 import ImportQuizPage from "./pages/quizzes/ImportQuizPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import HomePage from "./pages/home/HomePage";
 
 
 function QuizDetailsLayout() {
@@ -82,11 +86,23 @@ function ProtectedAppLayout() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/register" replace />} />
+      <Route path="/" element={<HomePage />} />
 
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/forgot-password"
+        element={<ForgotPasswordPage />}
+      />
+      <Route
+        path="/verify-password-reset"
+        element={<VerifyPasswordResetPage />}
+      />
+      <Route
+        path="/reset-password"
+        element={<ResetPasswordPage />}
+      />
       <Route path="/quizzes/:quizId/take" element={<TakeQuizPage />} />
       <Route
         path="/quizzes/:quizId/guest-results"

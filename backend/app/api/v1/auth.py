@@ -10,6 +10,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
+    create_password_reset_token,
+    decode_password_reset_token,
     generate_otp,
     hash_otp,
     hash_password,
@@ -17,6 +19,7 @@ from app.core.security import (
     verify_otp,
 )
 from app.models.email_verification import EmailVerification
+from app.models.password_reset import PasswordReset
 from app.models.user import User
 from app.schemas.user import (
     AccountDeleteRequest,
@@ -29,9 +32,16 @@ from app.schemas.user import (
     UserUpdate,
     EmailVerificationRequest,
     ResendVerificationRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    PasswordResetVerificationRequest,
+    PasswordResetVerificationResponse,
+    PasswordResetRequest,
+    PasswordResetResponse,
 )
 from app.services.email_service import (
     EmailDeliveryError,
+    send_password_reset_email,
     send_verification_email,
 )
 
@@ -416,6 +426,245 @@ def resend_verification(
         message="Verification code resent",
     )
 
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def forgot_password(
+    request_data: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+) -> ForgotPasswordResponse:
+    generic_response = ForgotPasswordResponse(
+        message=(
+            "If an account exists for this email, "
+            "a password reset code has been sent."
+        )
+    )
+
+    user = db.scalar(
+        select(User).where(User.email == request_data.email)
+    )
+
+    # Do not reveal whether an account exists for this email.
+    if user is None:
+        return generic_response
+
+    existing_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == request_data.email
+        )
+    )
+
+    now = datetime.now(timezone.utc)
+
+    if existing_reset is not None:
+        last_sent_at = existing_reset.last_sent_at
+
+        if last_sent_at.tzinfo is None:
+            last_sent_at = last_sent_at.replace(
+                tzinfo=timezone.utc
+            )
+
+        seconds_since_last_send = (
+            now - last_sent_at
+        ).total_seconds()
+
+        if (
+            seconds_since_last_send
+            < settings.email_otp_resend_cooldown_seconds
+        ):
+            # Return the same response rather than exposing
+            # password-reset state for an account.
+            return generic_response
+
+    otp = generate_otp()
+    otp_hash = hash_otp(otp)
+    expires_at = now + timedelta(
+        minutes=settings.email_otp_expire_minutes
+    )
+
+    try:
+        send_password_reset_email(
+            to_email=user.email,
+            otp=otp,
+        )
+    except EmailDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to send password reset email",
+        ) from exc
+
+    if existing_reset is not None:
+        existing_reset.otp_hash = otp_hash
+        existing_reset.expires_at = expires_at
+        existing_reset.attempt_count = 0
+        existing_reset.last_sent_at = now
+    else:
+        password_reset = PasswordReset(
+            email=user.email,
+            otp_hash=otp_hash,
+            expires_at=expires_at,
+            attempt_count=0,
+            last_sent_at=now,
+        )
+        db.add(password_reset)
+
+    db.commit()
+
+    return generic_response
+
+
+@router.post(
+    "/verify-password-reset",
+    response_model=PasswordResetVerificationResponse,
+)
+def verify_password_reset(
+    verification_data: PasswordResetVerificationRequest,
+    db: Session = Depends(get_db),
+) -> PasswordResetVerificationResponse:
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == verification_data.email
+        )
+    )
+
+    if password_reset is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset code",
+        )
+
+    now = datetime.now(timezone.utc)
+
+    expires_at = password_reset.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(
+            tzinfo=timezone.utc
+        )
+
+    if expires_at < now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset code",
+        )
+
+    if (
+        password_reset.attempt_count
+        >= settings.email_otp_max_attempts
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many verification attempts",
+        )
+
+    if not verify_otp(
+        verification_data.otp,
+        password_reset.otp_hash,
+    ):
+        password_reset.attempt_count += 1
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification code",
+        )
+
+    user = db.scalar(
+        select(User).where(
+            User.email == password_reset.email
+        )
+    )
+
+    if user is None:
+        db.delete(password_reset)
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset code",
+        )
+
+    reset_token = create_password_reset_token(
+        password_reset.email
+    )
+
+    return PasswordResetVerificationResponse(
+        reset_token=reset_token,
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=PasswordResetResponse,
+)
+def reset_password(
+    reset_data: PasswordResetRequest,
+    db: Session = Depends(get_db),
+) -> PasswordResetResponse:
+    email = decode_password_reset_token(
+        reset_data.reset_token
+    )
+
+    if email is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset token",
+        )
+
+    password_reset = db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.email == email
+        )
+    )
+
+    if password_reset is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset token",
+        )
+
+    now = datetime.now(timezone.utc)
+
+    expires_at = password_reset.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(
+            tzinfo=timezone.utc
+        )
+
+    if expires_at < now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset token",
+        )
+
+    user = db.scalar(
+        select(User).where(
+            User.email == email
+        )
+    )
+
+    if user is None:
+        db.delete(password_reset)
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset token",
+        )
+
+    user.password_hash = hash_password(
+        reset_data.new_password
+    )
+
+    db.delete(password_reset)
+    db.commit()
+
+    return PasswordResetResponse(
+        message="Password reset successfully"
+    )
 
 
 @router.post(

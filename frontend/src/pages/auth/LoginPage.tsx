@@ -277,7 +277,16 @@ function LoginPage() {
             </div>
 
             <div className="login-field">
-              <label htmlFor="password">Password</label>
+              <div className="login-field__header">
+                <label htmlFor="password">Password</label>
+
+                <Link
+                  to="/forgot-password"
+                  className="login-forgot-password"
+                >
+                  Forgot password?
+                </Link>
+              </div>
 
               <div className="login-input">
                 <LockKeyhole size={19} />
