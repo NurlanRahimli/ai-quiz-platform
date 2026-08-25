@@ -17,6 +17,7 @@ import {
 
 import apiClient from "../../api/client"
 import { useAuth } from "../../auth/useAuth"
+import QuizIcon from "../../components/quizzes/QuizIcon"
 import Button from "../../components/ui/Button"
 
 import "../../styles/pages/profile/ProfilePage.css"
@@ -29,6 +30,7 @@ type Quiz = {
   visibility: "public" | "unlisted";
   category: string | null
   tags: string[]
+  icon: string
   creator_name: string
   created_at: string
   updated_at: string
@@ -551,7 +553,7 @@ function ProfilePage() {
                       </div>
 
                       <div className="profile-quiz-card__icon">
-                        <FileQuestion
+                        <QuizIcon name={quiz.icon}
                           size={23}
                           aria-hidden="true"
                         />

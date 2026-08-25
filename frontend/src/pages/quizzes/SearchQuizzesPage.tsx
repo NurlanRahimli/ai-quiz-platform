@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import apiClient from "../../api/client";
+import QuizIcon from "../../components/quizzes/QuizIcon";
 import { useNavigate } from "react-router-dom";
 
 
@@ -31,6 +32,7 @@ type SearchQuiz = {
     visibility: "public" | "unlisted";
     category: string | null;
     tags: string[];
+    icon: string;
     creator_name: string;
     question_count: number;
     attempt_count: number;
@@ -468,7 +470,7 @@ export default function SearchQuizzesPage() {
                                         }}
                                     >
                                         <div className="quiz-search-result-card__icon">
-                                            <CircleHelp size={21} aria-hidden="true" />
+                                            <QuizIcon name={quiz.icon} size={21} />
                                         </div>
 
                                         <div className="quiz-search-result-card__main">
@@ -621,7 +623,10 @@ export default function SearchQuizzesPage() {
                                     onClick={() => handleSuggestionClick(quiz)}
                                 >
                                     <div className="quiz-search-suggestion__icon">
-                                        <Search size={17} aria-hidden="true" />
+                                        <QuizIcon
+                                            name={quiz.icon}
+                                            size={17}
+                                        />
                                     </div>
 
                                     <div className="quiz-search-suggestion__content">

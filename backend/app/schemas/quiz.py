@@ -123,6 +123,7 @@ class QuizResponse(BaseModel):
     category: str | None
     tags: list[str]
     visibility: Literal["public", "unlisted"]
+    icon: str
 
 
 class QuizListResponse(QuizResponse):

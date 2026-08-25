@@ -19,6 +19,7 @@ import {
 
 import apiClient from "../../api/client"
 import { useAuth } from "../../auth/useAuth"
+import QuizIcon from "../../components/quizzes/QuizIcon"
 
 import "../../styles/pages/profile/PublicProfilePage.css"
 
@@ -30,6 +31,7 @@ type PublicQuiz = {
     visibility: "public"
     category: string | null
     tags: string[]
+    icon: string
     creator_name: string
     question_count: number
     attempt_count: number
@@ -460,10 +462,10 @@ function PublicProfilePage() {
                                             </div>
 
                                             <div className="public-profile-quiz-card__icon">
-                                                <FileQuestion
-                                                    size={23}
-                                                    aria-hidden="true"
-                                                />
+                                                <QuizIcon
+                                                name={quiz.icon}
+                                                size={23}
+                                            />
                                             </div>
                                         </div>
 
