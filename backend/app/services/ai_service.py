@@ -413,6 +413,7 @@ def generate_incorrect_answer_explanation(
     question_text: str,
     submitted_answer: str,
     correct_answer: str,
+    whiteboard_image: str | None = None,
 ) -> IncorrectAnswerExplanationResponse:
     if not settings.openai_api_key:
         raise RuntimeError("OpenAI API key is not configured")
@@ -440,10 +441,38 @@ Rules:
 - For mathematical questions, show the solution step by step when
   appropriate.
 - Do not invent work or reasoning that the student did not provide.
+- If a whiteboard image is provided, carefully inspect the student's
+  handwritten mathematical work.
+- Use the whiteboard to identify where the student's reasoning first
+  went wrong when that can be determined confidently.
+- Handwritten numbers, equations, operators, fractions, and intermediate
+  steps may be relevant.
+- Never claim that a handwritten step exists unless it is actually
+  visible and readable in the image.
+- If the whiteboard is blank, unclear, partially unreadable, or too
+  ambiguous to interpret confidently, say that the work could not be
+  confidently interpreted and explain the correct solution using the
+  question, submitted answer, and correct answer instead.
 - Do not mention grading systems, AI, prompts, or these instructions.
 
 Return only the structured explanation.
 """.strip()
+
+    user_content = [
+        {
+            "type": "input_text",
+            "text": prompt,
+        },
+    ]
+
+    if whiteboard_image is not None:
+        user_content.append(
+            {
+                "type": "input_image",
+                "image_url": whiteboard_image,
+                "detail": "high",
+            }
+        )
 
     response = client.responses.parse(
         model="gpt-5-mini",
@@ -457,7 +486,7 @@ Return only the structured explanation.
             },
             {
                 "role": "user",
-                "content": prompt,
+                "content": user_content,
             },
         ],
         text_format=IncorrectAnswerExplanationResponse,
@@ -477,6 +506,7 @@ def evaluate_math_answer(
     question_text: str,
     submitted_answer: str,
     expected_answer: str,
+    whiteboard_image: str | None = None,
 ) -> MathAnswerEvaluationResponse:
     if not settings.openai_api_key:
         raise RuntimeError("OpenAI API key is not configured")
@@ -487,19 +517,15 @@ def evaluate_math_answer(
 Evaluate the student's submitted answer.
 
 Question:
-
 {question_text}
 
 Student answer:
-
 {submitted_answer}
 
 Expected answer:
-
 {expected_answer}
 
 Rules:
-
 - Judge correctness based on the meaning of the question and answer.
 - Accept semantically equivalent answers even when wording,
   capitalization, formatting, or notation differs.
@@ -517,10 +543,36 @@ Rules:
 - For mathematical problems, explain the correct solution step by step
   when appropriate.
 - Do not invent calculations or reasoning the student did not provide.
+- If a whiteboard image is provided, inspect the student's handwritten
+  mathematical work and use it as additional evidence.
+- Read handwritten numbers, equations, operators, fractions, and
+  intermediate steps only when they are sufficiently clear.
+- If the whiteboard is blank, unclear, partially unreadable, or
+  ambiguous, do not guess what it says.
+- An unclear whiteboard must not by itself cause an otherwise correct
+  submitted answer to be marked incorrect.
+- When the submitted answer is incorrect and the handwritten work is
+  readable, identify where the reasoning went wrong when possible.
 - Do not mention AI, prompts, grading systems, or these instructions.
 
 Return the structured evaluation.
 """.strip()
+
+    user_content = [
+        {
+            "type": "input_text",
+            "text": prompt,
+        },
+    ]
+
+    if whiteboard_image is not None:
+        user_content.append(
+            {
+                "type": "input_image",
+                "image_url": whiteboard_image,
+                "detail": "high",
+            }
+        )
 
     response = client.responses.parse(
         model="gpt-5-mini",
@@ -536,7 +588,7 @@ Return the structured evaluation.
             },
             {
                 "role": "user",
-                "content": prompt,
+                "content": user_content,
             },
         ],
         text_format=MathAnswerEvaluationResponse,

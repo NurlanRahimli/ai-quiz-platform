@@ -1,10 +1,14 @@
 import base64
 import binascii
 import uuid
-from pathlib import Path
+from urllib.parse import urlparse
+
+import cloudinary
+import cloudinary.uploader
+
+from app.core.config import settings
 
 
-WHITEBOARD_UPLOAD_DIR = Path("uploads/whiteboards")
 PNG_DATA_URL_PREFIX = "data:image/png;base64,"
 MAX_WHITEBOARD_IMAGE_SIZE = 5 * 1024 * 1024
 
@@ -51,14 +55,45 @@ def save_whiteboard_image(
             "Whiteboard image must contain valid PNG data."
         )
 
-    WHITEBOARD_UPLOAD_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
+    if not settings.cloudinary_url:
+        raise RuntimeError(
+            "Cloudinary is not configured"
+        )
+
+    parsed_url = urlparse(settings.cloudinary_url)
+
+    if (
+        parsed_url.scheme != "cloudinary"
+        or not parsed_url.hostname
+        or not parsed_url.username
+        or not parsed_url.password
+    ):
+        raise RuntimeError(
+            "CLOUDINARY_URL is invalid"
+        )
+
+    cloudinary.config(
+        cloud_name=parsed_url.hostname,
+        api_key=parsed_url.username,
+        api_secret=parsed_url.password,
+        secure=True,
     )
 
-    filename = f"{attempt_id}_{question_id}.png"
-    file_path = WHITEBOARD_UPLOAD_DIR / filename
+    public_id = f"{attempt_id}_{question_id}"
 
-    file_path.write_bytes(image_bytes)
+    result = cloudinary.uploader.upload(
+        image_data,
+        folder="quiz-app/whiteboards",
+        public_id=public_id,
+        resource_type="image",
+        overwrite=True,
+    )
 
-    return f"/uploads/whiteboards/{filename}"
+    secure_url = result.get("secure_url")
+
+    if not secure_url:
+        raise RuntimeError(
+            "Cloudinary did not return a secure image URL"
+        )
+
+    return secure_url

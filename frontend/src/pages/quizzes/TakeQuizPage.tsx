@@ -313,6 +313,30 @@ function TakeQuizPage() {
     return <main>{error || "Quiz not found"}</main>
   }
 
+  if (isSubmitting) {
+    return (
+      <main className="take-quiz-submitting">
+        <div className="take-quiz-submitting-card">
+          <div
+            className="take-quiz-submitting-spinner"
+            aria-hidden="true"
+          />
+
+          <h2>Analyzing your answers...</h2>
+
+          <p>
+            We're checking your responses and preparing your results.
+            This may take a few seconds.
+          </p>
+
+          <span>
+            Please keep this page open while we finish.
+          </span>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="take-quiz-page">
       <div className="take-quiz-header">
@@ -687,6 +711,8 @@ function TakeQuizPage() {
               <Button
                 type="button"
                 fullWidth
+                loading={isSubmitting}
+                disabled={isSubmitting}
                 onClick={handleReviewAndSubmit}
               >
                 <CheckCircle2 size={17} />

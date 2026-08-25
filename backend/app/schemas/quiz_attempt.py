@@ -48,6 +48,8 @@ class QuizAttemptResultAnswer(BaseModel):
     submitted_answer: str
     correct_answer: str | None
     answer_choices: list[QuizAttemptResultChoice] = []
+    ai_explanation: str | None = None
+    whiteboard_image_url: str | None = None
 
 
 class QuizAttemptResultResponse(BaseModel):

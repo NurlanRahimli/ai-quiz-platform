@@ -300,6 +300,52 @@ def test_generate_incorrect_answer_explanation():
     assert "x = 3" in result.explanation
     mock_client.responses.parse.assert_called_once()
 
+    call_kwargs = mock_client.responses.parse.call_args.kwargs
+    user_content = call_kwargs["input"][1]["content"]
+
+    assert len(user_content) == 1
+    assert user_content[0]["type"] == "input_text"
+
+
+def test_generate_incorrect_answer_explanation_includes_whiteboard_image():
+    whiteboard_image = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
+    )
+    parsed_result = IncorrectAnswerExplanationResponse(
+        explanation=(
+            "Your written work reaches 2x = 6 correctly, but the final "
+            "division should give x = 3."
+        ),
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = parsed_result
+
+        result = generate_incorrect_answer_explanation(
+            question_text="Solve: 2x + 4 = 10",
+            submitted_answer="x = 2",
+            correct_answer="x = 3",
+            whiteboard_image=whiteboard_image,
+        )
+
+    assert "x = 3" in result.explanation
+
+    mock_client.responses.parse.assert_called_once()
+
+    call_kwargs = mock_client.responses.parse.call_args.kwargs
+    user_message = call_kwargs["input"][1]
+    user_content = user_message["content"]
+
+    assert user_content[0]["type"] == "input_text"
+    assert user_content[1] == {
+        "type": "input_image",
+        "image_url": whiteboard_image,
+        "detail": "high",
+    }
+
 
 def test_evaluate_written_answer_raises_when_ai_returns_no_result():
     with patch("app.services.ai_service.OpenAI") as mock_openai:
@@ -390,6 +436,12 @@ def test_evaluate_math_answer_returns_incorrect_with_explanation():
         ),
     )
 
+    whiteboard_image = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M/wHwAF/gL+X8Wz5QAAAABJRU5ErkJggg=="
+    )
+
     with patch("app.services.ai_service.OpenAI") as mock_openai:
         mock_client = mock_openai.return_value
         mock_client.responses.parse.return_value.output_parsed = parsed_result
@@ -398,8 +450,19 @@ def test_evaluate_math_answer_returns_incorrect_with_explanation():
             question_text="Solve: 2x + 4 = 10",
             submitted_answer="x = 2",
             expected_answer="x = 3",
+            whiteboard_image=whiteboard_image,
         )
 
     assert result.is_correct is False
     assert "x = 3" in result.explanation
     mock_client.responses.parse.assert_called_once()
+
+    call_kwargs = mock_client.responses.parse.call_args.kwargs
+    user_content = call_kwargs["input"][1]["content"]
+
+    assert user_content[0]["type"] == "input_text"
+    assert user_content[1] == {
+        "type": "input_image",
+        "image_url": whiteboard_image,
+        "detail": "high",
+    }
