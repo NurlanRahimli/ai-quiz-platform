@@ -62,7 +62,7 @@ function formatQuizDate(value: string) {
 
 function ProfilePage() {
   const navigate = useNavigate()
-  const { user, refreshUser } = useAuth()
+  const { user } = useAuth()
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [quizTotal, setQuizTotal] = useState(0)
@@ -250,92 +250,6 @@ function ProfilePage() {
   }, [loadMoreQuizzes, quizPage, quizTotalPages])
 
 
-  const handleEditProfile = async () => {
-    if (!user) {
-      return
-    }
-
-    const result = await Swal.fire({
-      title: "Edit profile",
-      html: `
-        <div class="profile-edit-modal">
-          <label for="profile-display-name">
-            Display name
-          </label>
-          <input
-            id="profile-display-name"
-            class="swal2-input profile-edit-modal__input"
-            value="${user.display_name.replace(/"/g, "&quot;")}"
-            maxlength="100"
-            autocomplete="name"
-          />
-
-          <div class="profile-edit-modal__email">
-            <span>Email</span>
-            <strong>${user.email}</strong>
-            <small>Email changes aren't supported yet.</small>
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Save changes",
-      cancelButtonText: "Cancel",
-      focusConfirm: false,
-      preConfirm: () => {
-        const input = document.getElementById(
-          "profile-display-name",
-        ) as HTMLInputElement | null
-
-        const displayName = input?.value.trim() ?? ""
-
-        if (displayName.length < 2) {
-          Swal.showValidationMessage(
-            "Display name must contain at least 2 characters.",
-          )
-          return false
-        }
-
-        return displayName
-      },
-    })
-
-    if (!result.isConfirmed || !result.value) {
-      return
-    }
-
-    try {
-      await apiClient.patch("/auth/me", {
-        display_name: result.value,
-      })
-
-      await refreshUser()
-
-      await Swal.fire({
-        icon: "success",
-        title: "Profile updated",
-        text: "Your display name has been updated.",
-        timer: 1600,
-        showConfirmButton: false,
-      })
-    } catch (requestError) {
-      let message = "Unable to update your profile."
-
-      if (axios.isAxiosError(requestError)) {
-        const detail = requestError.response?.data?.detail
-
-        if (typeof detail === "string") {
-          message = detail
-        }
-      }
-
-      await Swal.fire({
-        icon: "error",
-        title: "Update failed",
-        text: message,
-      })
-    }
-  }
-
   if (!user) {
     return null
   }
@@ -386,13 +300,7 @@ function ProfilePage() {
           </div>
 
           <div className="profile-hero__side">
-            <Button
-              variant="secondary"
-              onClick={() => void handleEditProfile()}
-            >
-              <Pencil size={16} aria-hidden="true" />
-              Edit Profile
-            </Button>
+
 
             <div className="profile-stat">
               <strong>{quizTotal}</strong>

@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  CircleUserRound,
   Clock3,
   FileQuestion,
   Globe2,
@@ -196,19 +195,40 @@ function QuizDetailsPage() {
                   </div>
                 )}
 
-                <div className="quiz-details-creator">
-                <div
-                    className="quiz-details-creator__avatar"
-                    aria-hidden="true"
-                >
-                    <CircleUserRound size={22} />
-                </div>
+                {isOwner ? (
+                  <div className="quiz-details-creator quiz-details-creator--self">
+                    <div
+                      className="quiz-details-creator__avatar"
+                      aria-hidden="true"
+                    >
+                      {quiz.creator_name.trim().charAt(0).toUpperCase() || "U"}
+                    </div>
 
-                <div>
-                    <span>Created by</span>
-                    <strong>{quiz.creator_name}</strong>
-                </div>
-                </div>
+                    <div className="quiz-details-creator__content">
+                      <span>Created by</span>
+                      <strong>Me</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className="quiz-details-creator"
+                    type="button"
+                    onClick={() => navigate(`/users/${quiz.owner_id}`)}
+                    aria-label={`View ${quiz.creator_name}'s profile`}
+                  >
+                    <div
+                      className="quiz-details-creator__avatar"
+                      aria-hidden="true"
+                    >
+                      {quiz.creator_name.trim().charAt(0).toUpperCase() || "U"}
+                    </div>
+
+                    <div className="quiz-details-creator__content">
+                      <span>Created by</span>
+                      <strong>{quiz.creator_name}</strong>
+                    </div>
+                  </button>
+                )}
             </div>
 
             <div className="quiz-details-hero__actions">

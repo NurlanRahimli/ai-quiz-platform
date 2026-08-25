@@ -647,48 +647,6 @@
   font-size: 13px;
 }
 
-.profile-edit-modal {
-  padding: 4px 2px 0;
-  text-align: left;
-}
-
-.profile-edit-modal>label {
-  display: block;
-  margin-bottom: 7px;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.profile-edit-modal .profile-edit-modal__input {
-  width: 100%;
-  margin: 0;
-  box-sizing: border-box;
-}
-
-.profile-edit-modal__email {
-  display: flex;
-  margin-top: 22px;
-  padding: 14px;
-  flex-direction: column;
-  gap: 4px;
-  border-radius: 12px;
-  background: var(--color-surface-secondary);
-}
-
-.profile-edit-modal__email span,
-.profile-edit-modal__email small {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.profile-edit-modal__email strong {
-  color: var(--color-text-primary);
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-
-
 .profile-load-more {
   display: flex;
   min-height: 72px;
