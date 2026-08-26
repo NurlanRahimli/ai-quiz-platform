@@ -43,6 +43,18 @@ from app.services.chatbot_faq_service import answer_chatbot_faq
             "public quiz",
         ),
         (
+            "What is public visibility?",
+            "public quiz",
+        ),
+        (
+            "What is unlisted visibility?",
+            "unlisted quiz",
+        ),
+        (
+            "What does unlisted visibility mean?",
+            "unlisted quiz",
+        ),
+        (
             "What does public mean for a quiz?",
             "public quiz",
         ),
