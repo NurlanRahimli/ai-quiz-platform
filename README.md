@@ -736,6 +736,22 @@ Built as a full-stack AI software engineering portfolio project using React, Typ
 
 ---
 
-## 📜 License
+## 📜 Copyright & Usage
 
-This project is currently provided as a portfolio project. No open-source license has been specified.
+Copyright © 2026 Nurlan Rahimli. All rights reserved.
+
+This repository is publicly available for **portfolio, demonstration, and code-review purposes only**. Public access to this repository does not grant permission to reuse the source code as your own project.
+
+You may view the source code for educational, evaluation, and code-review purposes.
+
+Without my explicit written permission, you may not:
+
+- Copy or redistribute substantial portions of this project's source code.
+- Publish, deploy, or distribute copies or modified copies of this project as your own.
+- Use this project, or substantial portions of its source code, as your own portfolio project.
+- Claim authorship of this project's source code, design, features, or application.
+- Sell, sublicense, or commercially redistribute this project or substantial portions of it.
+
+**No open-source license is granted for this repository.**
+
+The source code remains the intellectual property of its author. If you would like permission to use any part of this project beyond viewing, evaluation, or code review, please contact the author.
