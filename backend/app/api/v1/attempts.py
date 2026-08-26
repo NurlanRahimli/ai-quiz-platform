@@ -833,10 +833,7 @@ def get_quiz_attempt_history(
     current_user: User = Depends(get_current_user),
 ) -> list[QuizAttemptHistoryItem]:
     quiz = db.scalar(
-        select(Quiz).where(
-            Quiz.id == quiz_id,
-            Quiz.owner_id == current_user.id,
-        )
+        select(Quiz).where(Quiz.id == quiz_id)
     )
 
     if quiz is None:

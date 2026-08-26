@@ -11,10 +11,12 @@ def register_and_login(
     email="quiz@example.com",
     password="Testing123!",
 ):
+    display_name = f"Quiz {email.split('@', 1)[0]}"
+
     register_verified_user(
         client,
         email=email,
-        display_name="Quiz User",
+        display_name=display_name,
         password=password,
     )
 
@@ -178,7 +180,7 @@ def test_list_quizzes_returns_only_current_users_quizzes(client):
 
     assert len(data) == 1
     assert data[0]["title"] == "User A Quiz"
-    assert data[0]["creator_name"] == "Quiz User"
+    assert data[0]["creator_name"] == "Quiz user-a"
 
 
 def test_discover_quizzes_returns_only_public_quizzes(client):
@@ -237,7 +239,7 @@ def test_discover_quizzes_returns_only_public_quizzes(client):
     assert quiz["visibility"] == "public"
     assert quiz["category"] == "Programming"
     assert quiz["tags"] == ["Python", "Basics"]
-    assert quiz["creator_name"] == "Quiz User"
+    assert quiz["creator_name"] == "Quiz discovery-owner"
     assert quiz["question_count"] == 0
     assert quiz["attempt_count"] == 0
 
@@ -443,7 +445,7 @@ def test_get_quiz(client):
     assert response.status_code == 200
     assert response.json()["id"] == quiz_id
     assert response.json()["title"] == "Math Quiz"
-    assert response.json()["creator_name"] == "Quiz User"
+    assert response.json()["creator_name"] == "Quiz quiz"
     assert response.json()["question_count"] == 0
 
 
@@ -529,7 +531,7 @@ def test_user_can_view_another_users_quiz_details(client):
 
     assert data["id"] == quiz_id
     assert data["title"] == "Shared Quiz"
-    assert data["creator_name"] == "Quiz User"
+    assert data["creator_name"] == "Quiz owner"
     assert data["question_count"] == 0
 
 
@@ -1174,7 +1176,7 @@ def test_create_quiz_records_audit_log(client, db):
     assert str(audit_log.quiz_id) == quiz["id"]
     assert audit_log.action == "quiz_created"
     assert audit_log.quiz_title == "Python Fundamentals"
-    assert audit_log.creator_name == "Quiz User"
+    assert audit_log.creator_name == "Quiz audit-create"
     assert audit_log.created_at is not None
 
 
@@ -1240,7 +1242,7 @@ def test_update_quiz_records_audit_log_with_updated_title(client, db):
     assert str(updated_log.quiz_id) == quiz["id"]
     assert updated_log.action == "quiz_updated"
     assert updated_log.quiz_title == "Updated Quiz Title"
-    assert updated_log.creator_name == "Quiz User"
+    assert updated_log.creator_name == "Quiz audit-update"
     assert updated_log.created_at is not None
 
 
@@ -1293,5 +1295,5 @@ def test_delete_quiz_records_audit_log_after_quiz_is_deleted(client, db):
     assert str(deleted_audit_log.quiz_id) == quiz["id"]
     assert deleted_audit_log.action == "quiz_deleted"
     assert deleted_audit_log.quiz_title == "Quiz That Will Be Deleted"
-    assert deleted_audit_log.creator_name == "Quiz User"
+    assert deleted_audit_log.creator_name == "Quiz audit-delete"
     assert deleted_audit_log.created_at is not None
