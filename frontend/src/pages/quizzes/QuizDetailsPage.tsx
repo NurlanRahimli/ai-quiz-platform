@@ -265,7 +265,10 @@ function QuizDetailsPage() {
         >
           <div className="quiz-details-info__item">
             <div className="quiz-details-info__icon">
-              <FileQuestion size={20} aria-hidden="true" />
+              <QuizIcon
+                name={quiz.icon}
+                size={20}
+              />
             </div>
 
             <div>

@@ -122,7 +122,7 @@ function LoginPage() {
         <div className="login-particle login-particle--three" />
 
         <div className="login-showcase__content">
-          <div className="login-brand">
+          <button type="button" className="login-brand" onClick={() => navigate("/")}>
             <img
               src="/quizapp-logo.svg"
               alt=""
@@ -133,7 +133,7 @@ function LoginPage() {
               <span>Quiz</span>
               <strong>App</strong>
             </span>
-          </div>
+          </button>
 
           <span className="login-showcase__eyebrow">
             ✦ Smarter Quizzes. Better Learning.
@@ -232,13 +232,13 @@ function LoginPage() {
       </section>
 
       <section className="login-form-panel">
-        <div className="login-mobile-brand">
+        <button type="button" className="login-mobile-brand" onClick={() => navigate("/")}>
           <img src="/quizapp-logo.svg" alt="" />
           <span>
             <strong>Quiz</strong>
             <b>App</b>
           </span>
-        </div>
+        </button>
 
         <div className="login-form-card">
           <div className="login-heading">

@@ -1,8 +1,8 @@
 import {
+  BrainCircuit,
   ArrowRight,
   Bookmark,
   Bot,
-  BrainCircuit,
   Check,
   FilePlus2,
   FileText,
@@ -90,10 +90,6 @@ export default function HomePage() {
     navigate(isAuthenticated ? "/quizzes/new" : "/login");
   };
 
-  const goToImportQuiz = () => {
-    navigate(isAuthenticated ? "/import-quiz" : "/login");
-  };
-
   return (
     <main className="home-page">
       <header className="home-navbar">
@@ -103,17 +99,21 @@ export default function HomePage() {
           onClick={() => navigate("/")}
           aria-label="QuizApp home"
         >
-          <span className="home-brand__icon">
-            <BrainCircuit size={23} aria-hidden="true" />
+          <span className="home-brand__icon" aria-hidden="true">
+            <img src="/quizapp-logo.svg" alt="" />
           </span>
-          <span>QuizApp</span>
+
+          <span className="home-brand__wordmark">
+            <span className="home-brand__quiz">Quiz</span>
+            <span className="home-brand__app">App</span>
+          </span>
         </button>
 
         <nav className="home-navbar__links" aria-label="Home navigation">
           <a href="#features">Features</a>
           <a href="#ai">AI</a>
           <a href="#how-it-works">How It Works</a>
-          <button type="button" onClick={() => navigate("/discover")}>
+          <button type="button">
             Explore Quizzes
           </button>
         </nav>
@@ -166,7 +166,6 @@ export default function HomePage() {
             <button
               type="button"
               className="home-button home-button--primary"
-              onClick={goToCreateQuiz}
             >
               <Sparkles size={18} aria-hidden="true" />
               Create Quiz
@@ -176,7 +175,6 @@ export default function HomePage() {
             <button
               type="button"
               className="home-button home-button--secondary"
-              onClick={() => navigate("/discover")}
             >
               Explore Quizzes
               <ArrowRight size={18} aria-hidden="true" />
@@ -186,7 +184,6 @@ export default function HomePage() {
           <button
             type="button"
             className="home-hero__upload"
-            onClick={goToImportQuiz}
           >
             <FileUp size={18} aria-hidden="true" />
             Upload with OCR
@@ -251,7 +248,6 @@ export default function HomePage() {
           <button
             type="button"
             className="home-section-link"
-            onClick={() => navigate("/discover")}
           >
             Explore all quizzes
             <ArrowRight size={16} aria-hidden="true" />
@@ -351,7 +347,6 @@ export default function HomePage() {
               <button
                 type="button"
                 className="home-create-card__action"
-                onClick={goToCreateQuiz}
               >
                 Start building
                 <ArrowRight size={16} aria-hidden="true" />
@@ -421,7 +416,6 @@ export default function HomePage() {
               <button
                 type="button"
                 className="home-create-card__action"
-                onClick={goToImportQuiz}
               >
                 Import document
                 <ArrowRight size={16} aria-hidden="true" />

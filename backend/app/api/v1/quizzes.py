@@ -353,6 +353,7 @@ def get_quiz(
         visibility=quiz.visibility,
         category=quiz.category,
         tags=quiz.tags,
+        icon=quiz.icon,
         creator_name=creator.display_name,
         question_count=question_count or 0,
         created_at=quiz.created_at,

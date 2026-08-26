@@ -12,6 +12,7 @@ class DashboardRecentQuiz(BaseModel):
     quiz_id: uuid.UUID
     quiz_title: str
     quiz_category: str | None
+    quiz_icon: str
     latest_attempt_id: uuid.UUID
     latest_submitted_at: datetime
     score_percentage: float | None

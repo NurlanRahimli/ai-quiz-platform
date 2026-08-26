@@ -4,7 +4,6 @@ import axios from "axios";
 import {
   ArrowLeft,
   Clock3,
-  FileQuestion,
   Play,
   Save,
   Plus,
@@ -23,6 +22,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import apiClient from "../../api/client";
 import Button from "../../components/ui/Button";
+import QuizIcon from "../../components/quizzes/QuizIcon";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import "../../styles/pages/quizzes/EditQuizPage.css";
@@ -71,6 +71,7 @@ type Quiz = {
   description: string | null
   category: string | null
   tags: string[]
+  icon: string
   visibility: QuizVisibility
   created_at: string
   updated_at: string
@@ -980,7 +981,11 @@ function EditQuizPage() {
           <div className="edit-quiz-page__heading">
             <div className="edit-quiz-page__eyebrow">
               <span className="edit-quiz-page__eyebrow-icon">
-                <FileQuestion size={16} strokeWidth={2} aria-hidden="true" />
+                <QuizIcon
+                  name={quiz.icon}
+                  size={16}
+                  strokeWidth={2}
+                />
               </span>
               Quiz editor
             </div>
@@ -1005,7 +1010,11 @@ function EditQuizPage() {
         <section className="edit-quiz-page__meta" aria-label="Quiz information">
           <div className="edit-quiz-page__meta-item">
             <span className="edit-quiz-page__meta-icon">
-              <FileQuestion size={18} strokeWidth={2} aria-hidden="true" />
+              <QuizIcon
+                name={quiz.icon}
+                size={18}
+                strokeWidth={2}
+              />
             </span>
 
             <div>
