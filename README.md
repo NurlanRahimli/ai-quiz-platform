@@ -18,6 +18,46 @@ The application includes a React/TypeScript frontend, a FastAPI/PostgreSQL backe
 
 ---
 
+## 🖼 Application Preview
+
+### Home
+
+The production landing page introduces QuizApp's quiz creation, AI-powered learning, document importing, analytics, and personalized learning experience.
+
+![QuizApp Home](docs/screenshots/home.png)
+
+### Dashboard
+
+The personalized dashboard provides an overview of quiz activity, recent performance, learning trends, and top categories.
+
+![QuizApp Dashboard](docs/screenshots/dashboard.png)
+
+### AI Quiz Import
+
+Documents and images can be uploaded and transformed into structured quizzes using the AI-powered import workflow.
+
+![QuizApp AI Quiz Import](docs/screenshots/ai-quiz-import.png)
+
+### Quiz Taking & Math Whiteboard
+
+QuizApp supports multiple question types, including mathematical work with an integrated whiteboard for showing the solution process.
+
+![QuizApp Quiz Taking and Math Whiteboard](docs/screenshots/quiz-whiteboard.png)
+
+### Results & AI Explanations
+
+Detailed result pages show scores, question-level feedback, AI-assisted explanations, and downloadable PDF reports.
+
+![QuizApp Results](docs/screenshots/quiz-results.png)
+
+### AI Learning Assistant
+
+The integrated AI assistant can answer platform questions and provide personalized insights based on the user's quizzes, performance, learning history, and connections.
+
+![QuizApp AI Learning Assistant](docs/screenshots/ai-assistant.png)
+
+---
+
 ## 🚀 Features
 
 ### Quiz Creation & Management
