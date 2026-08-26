@@ -207,6 +207,59 @@ def format_chatbot_query_result(
             message="No matching data was found.",
         )
 
+    is_recent_quiz_result = {
+        "quiz_id",
+        "quiz_title",
+        "latest_attempt_at",
+    }.issubset(result.columns)
+
+    if (
+        is_recent_quiz_result
+        and len(result.rows) == 1
+    ):
+        row = result.rows[0]
+        quiz_title = row.get("quiz_title")
+        category = row.get("category")
+        average_score = row.get("average_score")
+        attempt_count = row.get("attempt_count")
+
+        details: list[str] = []
+
+        if (
+            result.requested_metrics is not None
+            and "category" in result.requested_metrics
+            and category
+        ):
+            details.append(f"Category: {category}")
+
+        if (
+            "average_score" in result.columns
+            and average_score is not None
+        ):
+            details.append(f"Average score: {average_score}%")
+
+        if (
+            "attempt_count" in result.columns
+            and attempt_count is not None
+        ):
+            details.append(f"Attempts: {attempt_count}")
+
+        if details:
+            return ChatbotQueryResponse(
+                type="text",
+                message=(
+                    f'Your most recently taken quiz is "{quiz_title}". '
+                    + " ".join(details)
+                ),
+            )
+
+        return ChatbotQueryResponse(
+            type="text",
+            message=(
+                f'Your most recently taken quiz is "{quiz_title}".'
+            ),
+        )
+
     is_performance_trend = {
         "quiz_title",
         "attempt_count",

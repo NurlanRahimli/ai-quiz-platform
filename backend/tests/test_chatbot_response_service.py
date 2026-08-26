@@ -687,3 +687,146 @@ def test_formats_empty_user_connection_list_as_text():
         "There aren't any users to show for "
         "this connection list yet."
     )
+
+
+def test_formats_single_most_recent_quiz_as_text():
+    result = ChatbotQueryResult(
+        columns=[
+            "quiz_id",
+            "quiz_title",
+            "creator_name",
+            "category",
+            "latest_attempt_at",
+        ],
+        rows=[
+            {
+                "quiz_id": "quiz-1",
+                "quiz_title": "Newest Quiz",
+                "creator_name": "Alice",
+                "category": "Science",
+                "latest_attempt_at": (
+                    "2026-08-25T12:00:00+00:00"
+                ),
+            }
+        ],
+        total_rows=3,
+    )
+
+    response = format_chatbot_query_result(result)
+
+    assert response.type == "text"
+    assert response.message == (
+        'Your most recently taken quiz is "Newest Quiz".'
+    )
+
+
+def test_recent_quiz_includes_category_when_requested():
+    result = ChatbotQueryResult(
+        columns=[
+            "quiz_id",
+            "quiz_title",
+            "creator_name",
+            "category",
+            "latest_attempt_at",
+        ],
+        rows=[
+            {
+                "quiz_id": "quiz-1",
+                "quiz_title": "Science Basics",
+                "creator_name": "Alice",
+                "category": "Science",
+                "latest_attempt_at": "2026-08-25T12:00:00+00:00",
+            }
+        ],
+        total_rows=3,
+        requested_metrics=(
+            "latest_attempt_at",
+            "category",
+        ),
+    )
+
+    response = format_chatbot_query_result(result)
+
+    assert response.type == "text"
+    assert response.message == (
+        'Your most recently taken quiz is "Science Basics". '
+        "Category: Science"
+    )
+
+
+def test_recent_quiz_includes_average_score_when_requested():
+    result = ChatbotQueryResult(
+        columns=[
+            "quiz_id",
+            "quiz_title",
+            "creator_name",
+            "category",
+            "latest_attempt_at",
+            "average_score",
+        ],
+        rows=[
+            {
+                "quiz_id": "quiz-1",
+                "quiz_title": "Science Basics",
+                "creator_name": "Alice",
+                "category": "Science",
+                "latest_attempt_at": "2026-08-25T12:00:00+00:00",
+                "average_score": 85.5,
+            }
+        ],
+        total_rows=3,
+        requested_metrics=(
+            "latest_attempt_at",
+            "average_score",
+        ),
+    )
+
+    response = format_chatbot_query_result(result)
+
+    assert response.type == "text"
+    assert response.message == (
+        'Your most recently taken quiz is "Science Basics". '
+        "Average score: 85.5%"
+    )
+
+
+def test_recent_quiz_includes_all_requested_details():
+    result = ChatbotQueryResult(
+        columns=[
+            "quiz_id",
+            "quiz_title",
+            "creator_name",
+            "category",
+            "latest_attempt_at",
+            "average_score",
+            "attempt_count",
+        ],
+        rows=[
+            {
+                "quiz_id": "quiz-1",
+                "quiz_title": "Science Basics",
+                "creator_name": "Alice",
+                "category": "Science",
+                "latest_attempt_at": "2026-08-25T12:00:00+00:00",
+                "average_score": 85.5,
+                "attempt_count": 4,
+            }
+        ],
+        total_rows=3,
+        requested_metrics=(
+            "latest_attempt_at",
+            "category",
+            "average_score",
+            "attempt_count",
+        ),
+    )
+
+    response = format_chatbot_query_result(result)
+
+    assert response.type == "text"
+    assert response.message == (
+        'Your most recently taken quiz is "Science Basics". '
+        "Category: Science "
+        "Average score: 85.5% "
+        "Attempts: 4"
+    )

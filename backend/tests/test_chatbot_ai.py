@@ -1,4 +1,5 @@
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -616,3 +617,50 @@ def test_plan_chatbot_query_multiple_worst_quizzes_uses_requested_limit(
     assert result.intent == "query"
     assert result.query is not None
     assert result.query.limit == 3
+
+
+def test_plan_chatbot_query_supports_most_recent_taken_quiz():
+    parsed_result = ChatbotPlan(
+        intent="query",
+        query=ChatbotQueryPlan(
+            metrics=["latest_attempt_at"],
+            group_by="quiz",
+            sort_by="latest_attempt_at",
+            sort_direction="desc",
+            limit=1,
+        ),
+    )
+
+    with patch("app.services.ai_service.OpenAI") as mock_openai:
+        mock_client = mock_openai.return_value
+        mock_client.responses.parse.return_value.output_parsed = (
+            parsed_result
+        )
+
+        result = plan_chatbot_query(
+            question="what is the most recent quiz i have taken",
+            current_date="2026-08-25",
+        )
+
+    assert result.intent == "query"
+    assert result.query is not None
+
+    assert result.query.metrics == [
+        "latest_attempt_at",
+    ]
+    assert result.query.group_by == "quiz"
+    assert result.query.sort_by == "latest_attempt_at"
+    assert result.query.sort_direction == "desc"
+    assert result.query.limit == 1
+
+    call_kwargs = mock_client.responses.parse.call_args.kwargs
+    messages = call_kwargs["input"]
+
+    assert (
+        "what is the most recent quiz i have taken"
+        in messages[1]["content"]
+    )
+    system_prompt = messages[0]["content"]
+
+    assert "latest_attempt_at" in system_prompt
+    assert "most recent" in system_prompt

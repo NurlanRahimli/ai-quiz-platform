@@ -7,8 +7,12 @@ from app.schemas.ai import (
     ChatbotPlan,
     ChatbotQueryPlan,
 )
-from app.schemas.chatbot import ChatbotReportResponse
+from app.schemas.chatbot import (
+    ChatbotQueryResponse,
+    ChatbotReportResponse,
+)
 from app.services.ai_service import plan_chatbot_query
+from app.services.chatbot_faq_service import answer_chatbot_faq
 from app.services.chatbot_data_service import (
     get_user_attempt_rows,
     get_user_question_performance_rows,
@@ -113,13 +117,132 @@ def _resolve_report_month(
         f"Unsupported chatbot report period: {period}"
     )
 
+_CHATBOT_RELEVANT_TERMS = {
+    "quiz",
+    "quizzes",
+    "question",
+    "questions",
+    "attempt",
+    "attempts",
+    "score",
+    "scores",
+    "average",
+    "performance",
+    "result",
+    "results",
+    "category",
+    "categories",
+    "creator",
+    "created",
+    "create",
+    "made",
+    "authored",
+    "own",
+    "study",
+    "practice",
+    "review",
+    "improving",
+    "improve",
+    "declining",
+    "better",
+    "worse",
+    "wrong",
+    "miss",
+    "missed",
+    "struggle",
+    "struggling",
+    "report",
+    "follower",
+    "followers",
+    "following",
+    "follow",
+}
+
+_CHATBOT_OBVIOUSLY_IRRELEVANT_TERMS = {
+    "weather",
+    "temperature",
+    "forecast",
+    "recipe",
+    "recipes",
+    "pasta",
+    "pizza",
+    "president",
+    "politics",
+    "movie",
+    "movies",
+    "song",
+    "songs",
+    "dinosaur",
+    "dinosaurs",
+}
+
+
+def _instant_chatbot_response(
+    question: str,
+) -> ChatbotQueryResponse | None:
+    normalized = question.strip().lower()
+
+    words = {
+        word.strip(".,!?;:()[]{}\"'")
+        for word in normalized.split()
+    }
+
+    if words & _CHATBOT_RELEVANT_TERMS:
+        return None
+
+    if words & _CHATBOT_OBVIOUSLY_IRRELEVANT_TERMS:
+        return ChatbotQueryResponse(
+            type="text",
+            message=(
+                "I can help with your QuizApp data, such as your "
+                "quizzes, attempts, scores, performance, questions, "
+                "study recommendations, reports, and connections."
+            ),
+        )
+
+    compact = "".join(
+        character
+        for character in normalized
+        if character.isalnum()
+    )
+
+    if (
+        len(compact) >= 6
+        and " " not in normalized
+        and compact.isalpha()
+    ):
+        return ChatbotQueryResponse(
+            type="text",
+            message=(
+                "I didn't understand that. Try asking me about your "
+                "quizzes, attempts, scores, performance, questions, "
+                "study recommendations, reports, or connections."
+            ),
+        )
+
+    return None
+
+
 def answer_chatbot_data_question(
     db: Session,
     *,
     user_id: uuid.UUID,
     question: str,
     current_date: str,
-) -> ChatbotQueryResult | ChatbotReportResponse:
+) -> ChatbotQueryResult | ChatbotQueryResponse | ChatbotReportResponse:
+    faq_answer = answer_chatbot_faq(question)
+
+    if faq_answer is not None:
+        return ChatbotQueryResponse(
+            type="text",
+            message=faq_answer,
+        )
+
+    instant_response = _instant_chatbot_response(question)
+
+    if instant_response is not None:
+        return instant_response
+
     plan = plan_chatbot_query(
         question=question,
         current_date=current_date,

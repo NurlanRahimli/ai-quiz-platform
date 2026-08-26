@@ -8,7 +8,9 @@ import {
   LibraryBig,
   LoaderCircle,
   MessageCircle,
-  Minus,
+  Trash2,
+  Maximize2,
+  Minimize2,
   Sparkles,
   Trophy,
   X,
@@ -198,9 +200,44 @@ function getReportStatusIcon(
   }
 }
 
-function ChatbotWidget({ displayName }: ChatbotWidgetProps) {
+function ChatbotWidget({
+  displayName,
+}: ChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia("(max-width: 700px)").matches,
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      "(max-width: 700px)",
+    );
+
+    const handleMobileChange = (
+      event: MediaQueryListEvent,
+    ) => {
+      setIsMobile(event.matches);
+
+      if (event.matches) {
+        setIsExpanded(false);
+      }
+    };
+
+    mediaQuery.addEventListener(
+      "change",
+      handleMobileChange,
+    );
+
+    return () => {
+      mediaQuery.removeEventListener(
+        "change",
+        handleMobileChange,
+      );
+    };
+  }, []);
+
   const [input, setInput] = useState("");
   const [messages, setMessages] =
     useState<ChatMessage[]>(loadStoredMessages);
@@ -252,6 +289,21 @@ function ChatbotWidget({ displayName }: ChatbotWidgetProps) {
     if (!isClosing) {
       setIsClosing(true);
     }
+  };
+
+  const clearChatHistory = () => {
+    setMessages([]);
+    setInput("");
+
+    try {
+      window.sessionStorage.removeItem(CHATBOT_MESSAGES_STORAGE_KEY);
+    } catch {
+      // Chat still works if sessionStorage is unavailable.
+    }
+
+    window.setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
   };
 
   const firstName = displayName?.trim().split(/\s+/)[0] || "there";
@@ -327,9 +379,31 @@ function ChatbotWidget({ displayName }: ChatbotWidgetProps) {
     response: ChatbotResponse,
   ) => {
     if (response.type === "text") {
+      const linkMatch = response.message.match(
+        /\n\nLink:\s*(https?:\/\/\S+)\s*$/,
+      );
+
+      const messageText = linkMatch
+        ? response.message.slice(0, linkMatch.index).trim()
+        : response.message;
+
+      const linkUrl = linkMatch?.[1];
+
       return (
         <div className="chatbot-message chatbot-message--assistant">
-          <p>{response.message}</p>
+          <p>{messageText}</p>
+
+          {linkUrl && (
+            <p className="chatbot-message__link">
+              <span>Link: </span>
+              <a
+                href={linkUrl}
+                rel="noopener noreferrer"
+              >
+                {linkUrl}
+              </a>
+            </p>
+          )}
         </div>
       );
     }
@@ -436,7 +510,7 @@ function ChatbotWidget({ displayName }: ChatbotWidgetProps) {
     <div className="chatbot-widget">
       {isOpen && (
         <section
-          className={`chatbot-panel${isClosing ? " chatbot-panel--closing" : ""
+          className={`chatbot-panel${isExpanded ? " chatbot-panel--expanded" : ""}${isClosing ? " chatbot-panel--closing" : ""
             }`}
           role="dialog"
           aria-label="QuizApp AI assistant"
@@ -471,12 +545,47 @@ function ChatbotWidget({ displayName }: ChatbotWidgetProps) {
             </div>
 
             <div className="chatbot-header__actions">
+              {!isMobile && (
+                <button
+                  type="button"
+                  className="chatbot-header__expand"
+                  aria-label={
+                    isExpanded
+                      ? "Collapse chatbot"
+                      : "Expand chatbot"
+                  }
+                  onClick={() =>
+                    setIsExpanded((current) => !current)
+                  }
+                >
+                  {isExpanded ? (
+                    <Minimize2 size={22} strokeWidth={2} />
+                  ) : (
+                    <Maximize2 size={22} strokeWidth={2} />
+                  )}
+
+                  <span
+                    className="chatbot-header__tooltip"
+                    role="tooltip"
+                  >
+                    {isExpanded ? "Collapse" : "Expand"}
+                  </span>
+                </button>
+              )}
+
               <button
                 type="button"
-                aria-label="Minimize chatbot"
-                onClick={closeChatbot}
+                className="chatbot-header__clear"
+                aria-label="Clear history"
+                onClick={clearChatHistory}
               >
-                <Minus size={22} strokeWidth={2} />
+                <Trash2 size={22} strokeWidth={2} />
+                <span
+                  className="chatbot-header__tooltip"
+                  role="tooltip"
+                >
+                  Clear history
+                </span>
               </button>
 
               <button

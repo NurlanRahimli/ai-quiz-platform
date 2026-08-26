@@ -439,3 +439,81 @@ def test_query_multiple_metrics_grouped_by_quiz():
     assert biology["attempt_count"] == 1
     assert biology["average_score"] == 90.0
 
+
+
+def test_query_most_recent_quiz_uses_latest_attempt_timestamp():
+    older_quiz_id = uuid.uuid4()
+    newest_quiz_id = uuid.uuid4()
+    middle_quiz_id = uuid.uuid4()
+
+    rows = [
+        make_row(
+            quiz_id=older_quiz_id,
+            quiz_title="Older Quiz",
+            creator_name="Alice",
+            category="History",
+            score_percentage=80.0,
+            submitted_at=datetime(
+                2026,
+                8,
+                20,
+                12,
+                0,
+                tzinfo=timezone.utc,
+            ),
+        ),
+        make_row(
+            quiz_id=newest_quiz_id,
+            quiz_title="Newest Quiz",
+            creator_name="Bob",
+            category="Mathematics",
+            score_percentage=90.0,
+            submitted_at=datetime(
+                2026,
+                8,
+                25,
+                12,
+                0,
+                tzinfo=timezone.utc,
+            ),
+        ),
+        make_row(
+            quiz_id=middle_quiz_id,
+            quiz_title="Middle Quiz",
+            creator_name="Carol",
+            category="Science",
+            score_percentage=70.0,
+            submitted_at=datetime(
+                2026,
+                8,
+                23,
+                12,
+                0,
+                tzinfo=timezone.utc,
+            ),
+        ),
+    ]
+
+    result = execute_chatbot_query(
+        rows,
+        ChatbotQuery(
+            metrics=("latest_attempt_at",),
+            group_by="quiz",
+            sort_by="latest_attempt_at",
+            sort_direction="desc",
+            limit=1,
+        ),
+    )
+
+    assert result.total_rows == 3
+    assert len(result.rows) == 1
+
+    assert result.rows[0]["quiz_title"] == "Newest Quiz"
+    assert result.rows[0]["latest_attempt_at"] == datetime(
+        2026,
+        8,
+        25,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )

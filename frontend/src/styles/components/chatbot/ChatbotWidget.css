@@ -720,7 +720,7 @@
 /* ===== Message entrance animation ===== */
 
 .chatbot-body>.chatbot-message-row:not(:first-child) {
-  animation: chatbot-message-enter 220ms ease-out both;
+  animation: chatbot-message-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes chatbot-message-enter {
@@ -915,5 +915,133 @@
     flex-basis: 32px;
     width: 32px;
     height: 32px;
+  }
+}
+
+/* ===== Clear history button + tooltip ===== */
+
+/*
+ * The clear button intentionally inherits the exact same button styles
+ * as the Close button from .chatbot-header__actions button.
+ */
+.chatbot-header__clear {
+  position: relative;
+}
+
+/* Keep the trash icon visually identical to the X icon. */
+.chatbot-header__actions .chatbot-header__clear {
+  background: transparent;
+  color: var(--color-text-secondary);
+  opacity: 1;
+}
+
+.chatbot-header__actions .chatbot-header__clear:hover {
+  background: rgb(139 92 246 / 10%);
+  color: var(--color-text-primary);
+}
+
+/* Tooltip */
+.chatbot-header__tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 9999;
+
+  display: block;
+  width: max-content;
+  min-width: max-content;
+  height: auto;
+  padding: 6px 9px;
+
+  background: var(--color-text-primary);
+  border-radius: 6px;
+  color: var(--color-surface);
+
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transform: translateY(-3px);
+
+  transition:
+    opacity 120ms ease,
+    visibility 120ms ease,
+    transform 120ms ease;
+}
+
+.chatbot-header__clear:hover .chatbot-header__tooltip,
+.chatbot-header__clear:focus-visible .chatbot-header__tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+
+/* ===== Expanded chatbot ===== */
+
+.chatbot-panel {
+  transition:
+    width 180ms ease,
+    height 180ms ease;
+}
+
+.chatbot-panel--expanded {
+  width: min(900px, calc(100vw - 80px));
+  height: min(820px, calc(100vh - 80px));
+}
+
+/* Expand / collapse header control */
+.chatbot-header__expand {
+  position: relative;
+}
+
+/* Reuse the existing chatbot tooltip */
+.chatbot-header__expand:hover .chatbot-header__tooltip,
+.chatbot-header__expand:focus-visible .chatbot-header__tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Mobile chatbot is already effectively full-screen. */
+@media (max-width: 700px) {
+  .chatbot-panel--expanded {
+    width: 100%;
+    height: calc(100dvh - 28px);
+  }
+}
+
+@media (max-width: 440px) {
+  .chatbot-panel--expanded {
+    height: calc(100dvh - 16px);
+  }
+}
+
+/* FAQ navigation links */
+.chatbot-message__link {
+  margin-top: 12px;
+}
+
+.chatbot-message__link a {
+  color: var(--primary, #7c3aed);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.chatbot-message__link a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Mobile chatbot does not need expand/collapse */
+@media (max-width: 700px) {
+  .chatbot-header__expand {
+    display: none;
   }
 }

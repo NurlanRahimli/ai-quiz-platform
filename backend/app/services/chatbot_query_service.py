@@ -15,6 +15,8 @@ Metric = Literal[
     "attempt_count",
     "quiz_count",
     "average_score",
+    "latest_attempt_at",
+    "category",
 ]
 
 SortDirection = Literal[
@@ -51,6 +53,7 @@ class ChatbotQueryResult:
     columns: list[str]
     rows: list[dict[str, object]]
     total_rows: int
+    requested_metrics: tuple[Metric, ...] | None = None
 
 
 def _matches_filters(
@@ -129,7 +132,7 @@ def _group_key(
 def _calculate_metric(
     rows: list[ChatbotAttemptRow],
     metric: Metric,
-) -> int | float | None:
+) -> int | float | datetime | None:
     if metric == "attempt_count":
         return len(rows)
 
@@ -138,6 +141,21 @@ def _calculate_metric(
             row.quiz_id
             for row in rows
         })
+
+    if metric == "latest_attempt_at":
+        if not rows:
+            return None
+
+        return max(
+            row.submitted_at
+            for row in rows
+        )
+
+    if metric == "category":
+        if not rows:
+            return None
+
+        return rows[0].category
 
     scores = [
         row.score_percentage
@@ -174,6 +192,7 @@ def execute_chatbot_query(
             columns=list(query.metrics),
             rows=[result_row],
             total_rows=1,
+            requested_metrics=query.metrics,
         )
 
     grouped: dict[
@@ -223,6 +242,9 @@ def execute_chatbot_query(
     ) -> tuple[bool, float]:
         value = result_row.get(sort_metric)
 
+        if isinstance(value, datetime):
+            return (False, value.timestamp())
+
         if isinstance(value, (int, float)):
             return (False, float(value))
 
@@ -252,4 +274,5 @@ def execute_chatbot_query(
         columns=columns,
         rows=result_rows,
         total_rows=total_rows,
+        requested_metrics=query.metrics,
     )
