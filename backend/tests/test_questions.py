@@ -5,10 +5,12 @@ def register_and_login(
     email="questions@example.com",
     password="Testing123!",
 ):
+    display_name = f"Question {email.split('@', 1)[0]}"
+
     register_verified_user(
         client,
         email=email,
-        display_name="Question User",
+        display_name=display_name,
         password=password,
     )
 

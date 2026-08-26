@@ -20,10 +20,12 @@ def register_and_login(
     email="attempt-user@example.com",
     password="Password123!",
 ):
+    display_name = f"Attempt {email.split('@', 1)[0]}"
+
     register_verified_user(
         client,
         email=email,
-        display_name="Attempt User",
+        display_name=display_name,
         password=password,
     )
 
@@ -636,24 +638,61 @@ def test_quiz_attempt_history_shows_multiple_attempts(client):
     assert len(response.json()) == 2
 
 
-def test_cannot_view_another_users_quiz_attempt_history(client):
+def test_user_can_view_own_attempt_history_for_another_users_quiz(client):
     owner_headers = register_and_login(
         client,
         email="history-owner@example.com",
     )
     quiz = create_quiz_with_questions(client, owner_headers)
 
-    other_headers = register_and_login(
-        client,
-        email="history-other@example.com",
+    correct_choice = next(
+        choice
+        for choice in quiz["multiple_choice"]["answer_choices"]
+        if choice["is_correct"]
     )
+
+    taker_headers = register_and_login(
+        client,
+        email="history-taker@example.com",
+    )
+
+    submit_response = client.post(
+        f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
+        headers=taker_headers,
+        json={
+            "answers": [
+                {
+                    "question_id": quiz["multiple_choice"]["id"],
+                    "selected_choice_id": correct_choice["id"],
+                },
+                {
+                    "question_id": quiz["written"]["id"],
+                    "text_answer": "A variable stores a value.",
+                },
+                {
+                    "question_id": quiz["math"]["id"],
+                    "text_answer": "5",
+                },
+            ],
+        },
+    )
+
+    assert submit_response.status_code == 201
 
     response = client.get(
         f"/api/v1/quizzes/{quiz['quiz_id']}/attempts",
-        headers=other_headers,
+        headers=taker_headers,
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["attempt_id"] == submit_response.json()["id"]
+    assert data[0]["score"] == 3
+    assert data[0]["gradable_questions"] == 3
+    assert data[0]["total_questions"] == 3
 
 
 def test_authenticated_user_can_submit_attempt_for_another_users_quiz(client):
@@ -802,7 +841,7 @@ def test_submit_quiz_attempt_records_completion_audit(client, db):
     assert str(audit_log.quiz_id) == quiz["quiz_id"]
     assert audit_log.action == "quiz_completed"
     assert audit_log.quiz_title == "Quiz Attempt Test"
-    assert audit_log.creator_name == "Attempt User"
+    assert audit_log.creator_name == "Attempt audit-creator"
     assert audit_log.created_at is not None
 
 
