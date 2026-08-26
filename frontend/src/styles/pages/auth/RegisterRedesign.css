@@ -1301,3 +1301,14 @@
         margin-top: 17px;
     }
 }
+/* Clickable QuizApp branding */
+button.register-brand,
+button.register-mobile-brand {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}

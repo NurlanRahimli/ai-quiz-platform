@@ -26,17 +26,40 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #f8fafc;
-  font-size: 20px;
-  font-weight: 800;
+  cursor: pointer;
 }
 
 .home-brand__icon {
-  display: grid;
-  width: 31px;
-  height: 31px;
-  place-items: center;
-  color: #a855f7;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-brand__icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.home-brand__wordmark {
+  display: inline-flex;
+  align-items: center;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.8px;
+}
+
+.home-brand__quiz {
+  color: #f8fafc;
+}
+
+.home-brand__app {
+  color: #8b5cf6;
 }
 
 .home-navbar__links {
@@ -406,12 +429,17 @@
   }
 
   .home-brand {
-    font-size: 17px;
+    gap: 7px;
   }
 
   .home-brand__icon {
-    width: 27px;
-    height: 27px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .home-brand__wordmark {
+    font-size: 20px;
+    letter-spacing: -0.6px;
   }
 
   .home-navbar__actions {

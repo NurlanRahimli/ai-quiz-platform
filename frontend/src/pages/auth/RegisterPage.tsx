@@ -137,7 +137,7 @@ function RegisterPage() {
         </div>
 
         <div className="register-showcase__content">
-          <div className="register-brand">
+          <button type="button" className="register-brand" onClick={() => navigate("/")}>
             <img
               src="/quizapp-logo.svg"
               alt=""
@@ -148,7 +148,7 @@ function RegisterPage() {
               <span>Quiz</span>
               <strong>App</strong>
             </span>
-          </div>
+          </button>
 
           <div className="register-showcase__badge">
             <span>✦</span>
@@ -345,14 +345,14 @@ function RegisterPage() {
       </section>
 
       <section className="register-form-panel">
-        <div className="register-mobile-brand">
+        <button type="button" className="register-mobile-brand" onClick={() => navigate("/")}>
           <img src="/quizapp-logo.svg" alt="" />
 
           <span className="register-mobile-brand__name">
             <span>Quiz</span>
             <strong>App</strong>
           </span>
-        </div>
+        </button>
 
         <div className="register-form-card">
           <div className="register-form-container">

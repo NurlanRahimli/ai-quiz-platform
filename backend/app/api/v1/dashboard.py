@@ -133,6 +133,7 @@ def get_dashboard(
                     quiz_id=attempt.quiz_id,
                     quiz_title=attempt.quiz.title,
                     quiz_category=attempt.quiz.category,
+                    quiz_icon=attempt.quiz.icon,
                     latest_attempt_id=attempt.id,
                     latest_submitted_at=attempt.submitted_at,
                     score_percentage=score_percentage,

@@ -191,5 +191,6 @@ class QuizLandingResponse(BaseModel):
     question_count: int
     category: str | None
     tags: list[str]
+    icon: str
     created_at: datetime
     updated_at: datetime

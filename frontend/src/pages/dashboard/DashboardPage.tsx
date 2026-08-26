@@ -11,6 +11,7 @@ import {
   Trophy,
 } from "lucide-react";
 
+import QuizIcon from "../../components/quizzes/QuizIcon";
 import apiClient from "../../api/client";
 import { useAuth } from "../../auth/useAuth";
 import ChatbotWidget from "../../components/chatbot/ChatbotWidget";
@@ -26,6 +27,7 @@ type DashboardRecentQuiz = {
   quiz_id: string;
   quiz_title: string;
   quiz_category: string | null;
+  quiz_icon: string;
   latest_attempt_id: string;
   latest_submitted_at: string;
   score_percentage: number | null;
@@ -386,7 +388,11 @@ function DashboardPage() {
                           className="dashboard-recent-item__icon"
                           aria-hidden="true"
                         >
-                          <BookOpen size={18} strokeWidth={2} />
+                          <QuizIcon
+                            name={quiz.quiz_icon}
+                            size={18}
+                            strokeWidth={2}
+                          />
                         </div>
 
                         <div className="dashboard-recent-item__details">
