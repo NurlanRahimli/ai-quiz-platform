@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.api.v1.audit_logs import router as audit_logs_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.ai import router as ai_router
+from app.api.v1.chatbot import router as chatbot_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -37,6 +38,10 @@ app.include_router(
 )
 app.include_router(
     ai_router,
+    prefix="/api/v1",
+)
+app.include_router(
+    chatbot_router,
     prefix="/api/v1",
 )
 app.include_router(

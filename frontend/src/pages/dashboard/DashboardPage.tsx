@@ -13,6 +13,7 @@ import {
 
 import apiClient from "../../api/client";
 import { useAuth } from "../../auth/useAuth";
+import ChatbotWidget from "../../components/chatbot/ChatbotWidget";
 import "../../styles/pages/dashboard/DashboardPage.css";
 
 type DashboardStats = {
@@ -712,6 +713,8 @@ function DashboardPage() {
           </div>
         </>
       ) : null}
+
+      <ChatbotWidget displayName={user?.display_name} />
     </div>
   );
 }

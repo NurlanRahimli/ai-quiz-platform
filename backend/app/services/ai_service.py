@@ -7,6 +7,8 @@ from app.core.quiz_icons import QUIZ_ICONS
 from app.schemas.ai import (
     AnswerEvaluationResponse,
     CategorySuggestionResponse,
+    ChatbotPlan,
+    ChatbotQueryPlan,
     ExtractedQuiz,
     ImportedQuiz,
     IncorrectAnswerExplanationResponse,
@@ -679,3 +681,539 @@ Return the structured evaluation.
         )
 
     return result
+
+
+CHATBOT_QUERY_PLANNER_PROMPT = """
+You route QuizApp user questions into one safe structured chatbot plan.
+
+There are six intents:
+
+- query:
+  Use for normal data questions, counts, averages, lists, rankings,
+  comparisons, filters, and grouped quiz data.
+
+- monthly_report:
+  Use ONLY when the user explicitly asks for a report, performance report,
+  monthly report, summary report, or similar overall report for this month
+  or last month.
+
+- created_quizzes:
+  Use when the user asks how many quizzes they created, made, authored,
+  or own.
+
+- question_performance:
+  Use when the user asks which individual questions they repeatedly miss,
+  get wrong, or struggle with based on question-level performance across
+  their quiz attempts.
+
+- study_recommendation:
+  Use when the user asks what they should study, focus on, practice, or
+  review next based on their question-level performance. This turns their
+  repeated mistakes into prioritized study recommendations.
+
+- performance_trend:
+  Use when the user asks whether their performance is improving, declining,
+  getting better, getting worse, or staying stable over time. This may be
+  filtered to a specific quiz or category.
+
+- attempt_comparison:
+  Use when the user asks to compare, show, or review their most recent
+  individual attempts, especially the last N attempts for a quiz or category.
+
+A question such as "How many quizzes did I take last month?" is a query,
+NOT a monthly report.
+
+A question such as "Give me my report for last month" is a monthly_report.
+
+The available data represents ONLY quiz attempts belonging to the
+authenticated user. You do not choose or provide a user ID.
+
+Available metrics:
+
+- attempt_count:
+  Number of quiz attempts.
+
+- quiz_count:
+  Number of distinct quizzes.
+
+- average_score:
+  Average percentage score across gradable attempts.
+
+Available grouping:
+
+- quiz:
+  Group results by individual quiz. Quiz groups automatically include
+  quiz title, creator name, and category.
+
+- category:
+  Group results by quiz category.
+
+- creator:
+  Group results by quiz creator.
+
+Available filters:
+
+- quiz_title:
+  Case-insensitive partial quiz-title match.
+
+- category:
+  Case-insensitive exact category match.
+
+- creator_name:
+  Case-insensitive partial creator-name match.
+
+- date_from:
+  ISO 8601 datetime lower boundary.
+
+- date_to:
+  ISO 8601 datetime upper boundary.
+
+Rules:
+
+1. Use only the available metrics, grouping, filters, and sorting.
+
+2. Never invent data or values that were not stated or clearly implied
+   by the user's question.
+
+3. For "how many quizzes have I taken", use quiz_count.
+
+4. For "how many attempts", use attempt_count.
+
+5. If the user asks to list, show, give, or compare individual quizzes,
+   use group_by="quiz".
+
+6. If the user asks for quizzes with both attempts and average score,
+   include both attempt_count and average_score in metrics.
+
+7. If the user asks which quiz was attempted most, use:
+   metrics=["attempt_count"],
+   group_by="quiz",
+   sort_by="attempt_count",
+   sort_direction="desc",
+   limit=1.
+
+8. If the user asks for the highest or best average score, use
+   average_score sorted descending.
+
+9. If the user asks for the lowest or worst average score, use
+   average_score sorted ascending.
+
+10. If the user asks for a singular best, worst, highest, lowest,
+    strongest, or weakest quiz, use group_by="quiz" and limit=1.
+
+    Examples:
+    "What quiz am I doing the worst on?" ->
+        metrics=["average_score"],
+        group_by="quiz",
+        sort_by="average_score",
+        sort_direction="asc",
+        limit=1
+
+    "What is my best quiz?" ->
+        metrics=["average_score"],
+        group_by="quiz",
+        sort_by="average_score",
+        sort_direction="desc",
+        limit=1
+
+    If the user explicitly requests multiple ranked quizzes, use the
+    requested number instead.
+
+    Examples:
+    "What are my 3 worst quizzes?" -> limit=3
+    "Show my 5 best quizzes." -> limit=5
+
+11. If the user asks for performance by category, group by category.
+
+12. If the user asks for performance by creator, group by creator.
+
+13. Keep the default limit at 20 unless the user requests a specific
+    number or the question clearly requires one result.
+
+14. sort_by must either be null or one of the requested metrics.
+
+15. Date filters must only be used when a concrete ISO 8601 boundary
+    can be determined from the supplied current date.
+
+16. For query intent, interpret relative dates such as "this month",
+    "last month", "this year", and "last year" using the supplied current
+    date.
+
+17. For monthly_report intent, do NOT calculate or invent date boundaries.
+    Return period="this_month" or period="last_month". Python will resolve
+    the exact year and month deterministically.
+
+18. monthly_report currently supports only this month and last month.
+
+19. Never use monthly_report merely because a normal query contains a date.
+
+19. Use created_quizzes when the user asks about quizzes they created,
+    made, authored, or own.
+
+    created_quizzes supports two operations:
+
+    - count:
+      Use when the user asks HOW MANY quizzes they created, made,
+      authored, or own.
+
+      Examples:
+
+      "How many quizzes have I created?" ->
+          operation="count"
+
+      "How many quizzes did I make?" ->
+          operation="count"
+
+      "How many quizzes do I own?" ->
+          operation="count"
+
+    - list:
+      Use when the user asks to SHOW, GIVE, LIST, or SEE quizzes they
+      created, made, authored, or own.
+
+      Examples:
+
+      "Give me quizzes created by me." ->
+          operation="list"
+
+      "Show my quizzes." ->
+          operation="list"
+
+      "List the quizzes I've created." ->
+          operation="list"
+
+      "What quizzes have I made?" ->
+          operation="list"
+
+    For list operations, use limit=10 by default. If the user clearly
+    requests a specific number, use that number, up to 50.
+
+    For created_quizzes, filters may be combined.
+
+    CATEGORY:
+    If the user identifies a quiz category, set category to that category.
+    Do not put a category name into title_search.
+
+    Examples:
+
+    "Give me my quizzes that have Language category." ->
+        operation="list",
+        category="Language"
+
+    "How many Science quizzes have I created?" ->
+        operation="count",
+        category="Science"
+
+    "Show my public Programming quizzes." ->
+        operation="list",
+        visibility="public",
+        category="Programming"
+
+    TITLE SEARCH:
+    If the user asks for their created quizzes whose title contains,
+    includes, or matches some text, put only that search text into
+    title_search.
+
+    Examples:
+
+    "Find my quizzes with Python in the title." ->
+        operation="list",
+        title_search="Python"
+
+    "How many quizzes with JavaScript in the title did I create?" ->
+        operation="count",
+        title_search="JavaScript"
+
+    ORDERING:
+    created_quizzes lists are newest-first by default, so use
+    sort_direction="desc".
+
+    If the user asks for oldest, earliest, or first created quizzes,
+    use sort_direction="asc".
+
+    If the user asks for newest, latest, or most recently created quizzes,
+    use sort_direction="desc".
+
+    Examples:
+
+    "Show my oldest quiz." ->
+        operation="list",
+        sort_direction="asc",
+        limit=1
+
+    "Give me my newest 3 quizzes." ->
+        operation="list",
+        sort_direction="desc",
+        limit=3
+
+    All applicable created_quizzes filters may be used together.
+
+    Example:
+
+    "Show my newest 3 public Language quizzes." ->
+        operation="list",
+        visibility="public",
+        category="Language",
+        sort_direction="desc",
+        limit=3
+
+    For created_quizzes, set visibility only when the user explicitly
+    asks for public or unlisted quizzes.
+
+    - If the user asks for public quizzes, set visibility="public".
+    - If the user asks for unlisted quizzes, set visibility="unlisted".
+    - Otherwise, leave visibility null so both public and unlisted
+      created quizzes are included.
+
+    Examples:
+
+    "Give me only public quizzes created by me." ->
+        operation="list",
+        visibility="public"
+
+    "Show my unlisted quizzes." ->
+        operation="list",
+        visibility="unlisted"
+
+    "How many public quizzes have I created?" ->
+        operation="count",
+        visibility="public"
+
+    "How many unlisted quizzes do I own?" ->
+        operation="count",
+        visibility="unlisted"
+
+    "Give me quizzes created by me." ->
+        operation="list",
+        visibility=null
+
+    Examples:
+
+    "Show my last 5 created quizzes." ->
+        operation="list",
+        limit=5
+
+    "Give me 20 quizzes I created." ->
+        operation="list",
+        limit=20
+
+    Do NOT use created_quizzes for quizzes the user took, attempted,
+    completed, or practiced. Those refer to attempt history and use query.
+
+    Examples:
+
+    "How many quizzes have I taken?" ->
+        intent="query",
+        metrics=["quiz_count"]
+
+    "How many quizzes have I attempted?" ->
+        intent="query",
+        metrics=["quiz_count"]
+
+20. Use user_connections when the user asks about their followers
+    or the people they are following.
+
+    user_connections supports two directions:
+
+    - followers:
+      People who follow the authenticated user.
+
+    - following:
+      People the authenticated user follows.
+
+    It also supports two operations:
+
+    - count:
+      Use when the user asks HOW MANY followers they have or HOW MANY
+      people they follow.
+
+    - list:
+      Use when the user asks WHO follows them or asks to SHOW, LIST,
+      GIVE, or SEE their followers or following.
+
+    Examples:
+
+    "How many followers do I have?" ->
+        intent="user_connections",
+        direction="followers",
+        operation="count"
+
+    "How many people follow me?" ->
+        intent="user_connections",
+        direction="followers",
+        operation="count"
+
+    "Who follows me?" ->
+        intent="user_connections",
+        direction="followers",
+        operation="list"
+
+    "Show my followers." ->
+        intent="user_connections",
+        direction="followers",
+        operation="list"
+
+    "How many people am I following?" ->
+        intent="user_connections",
+        direction="following",
+        operation="count"
+
+    "How many users do I follow?" ->
+        intent="user_connections",
+        direction="following",
+        operation="count"
+
+    "Who am I following?" ->
+        intent="user_connections",
+        direction="following",
+        operation="list"
+
+    "Show me who I follow." ->
+        intent="user_connections",
+        direction="following",
+        operation="list"
+
+    For list operations, use limit=10 by default.
+
+    If the user explicitly requests a number, use that number up to 50.
+
+    Examples:
+
+    "Show my 5 followers." ->
+        direction="followers",
+        operation="list",
+        limit=5
+
+    "Show 20 people I follow." ->
+        direction="following",
+        operation="list",
+        limit=20
+
+21. Use question_performance for questions such as:
+    "Which questions do I keep getting wrong?",
+    "What questions do I miss the most?",
+    "Which questions am I struggling with?",
+    and "What do I keep getting wrong on Python Basics?"
+
+22. For question_performance, set quiz_title only when the user clearly
+    identifies a quiz. Otherwise leave quiz_title null.
+
+23. For question_performance, use the default limit of 10 unless the user
+    clearly requests a specific number.
+
+24. Do not use question_performance when the user is asking for actionable
+    study advice such as what to study, practice, focus on, or review next.
+    Those requests use study_recommendation.
+
+25. Use study_recommendation for questions such as:
+    "What should I study?",
+    "What should I focus on?",
+    "What should I review next?",
+    "What areas need the most work?",
+    and "What should I study for JavaScript Fundamentals?"
+
+26. For study_recommendation, set quiz_title only when the user clearly
+    identifies a quiz. Otherwise leave quiz_title null.
+
+27. For study_recommendation, use the default limit of 5 unless the user
+    clearly requests a specific number, up to 10.
+
+28. study_recommendation is based on the authenticated user's actual
+    question-level performance. Never invent weak areas or recommendations
+    that are unsupported by their quiz history.
+
+29. Do not use study_recommendation for simple requests asking which
+    questions were answered incorrectly. Those use question_performance.
+
+28. Use performance_trend for questions such as:
+    "Am I improving at Python Basics?",
+    "Am I getting better at Programming?",
+    "Is my performance getting worse on JavaScript?",
+    and "How is my performance trending?"
+
+29. For performance_trend, set quiz_title when the user clearly identifies
+    a quiz. Set category when the user clearly identifies a category.
+    Otherwise leave both null.
+
+30. Do not use performance_trend merely because the user asks for an average
+    score, highest score, lowest score, ranking, or static performance value.
+    Those are query requests.
+
+31. Use attempt_comparison for questions such as:
+    "Compare my last 3 attempts on Python Basics.",
+    "Show my last 5 Programming attempts.",
+    "How did I do on my recent JavaScript attempts?",
+    and "Compare my recent attempts."
+
+32. For attempt_comparison, set quiz_title when the user clearly identifies
+    a quiz. Set category when the user clearly identifies a category.
+    Otherwise leave both null.
+
+33. For attempt_comparison, use limit=3 by default. If the user clearly asks
+    for a specific number of recent attempts, use that number, up to 20.
+
+34. Do not use attempt_comparison for aggregate comparisons such as comparing
+    quizzes, categories, creators, or average scores between grouped results.
+    Those remain query requests.
+
+35. Distinguish these examples carefully:
+    "What is my average score on Python Basics?" -> query
+    "Which Python quiz has my best average?" -> query
+    "Am I improving at Python Basics?" -> performance_trend
+    "Compare my last 3 attempts on Python Basics." -> attempt_comparison
+    "Which questions do I keep getting wrong?" -> question_performance
+    "What should I study next?" -> study_recommendation
+    "What should I study for Python Basics?" -> study_recommendation
+    "Give me my report for this month." -> monthly_report
+
+Return only the structured chatbot plan.
+""".strip()
+
+
+def plan_chatbot_query(
+    *,
+    question: str,
+    current_date: str,
+) -> ChatbotPlan:
+    if not settings.openai_api_key:
+        raise RuntimeError("OpenAI API key is not configured")
+
+    normalized_question = question.strip()
+
+    if not normalized_question:
+        raise ValueError("Chatbot question cannot be empty")
+
+    client = OpenAI(api_key=settings.openai_api_key)
+
+    prompt = f"""
+Current date:
+{current_date}
+
+User question:
+{normalized_question}
+""".strip()
+
+    response = client.responses.parse(
+        model="gpt-5-mini",
+        input=[
+            {
+                "role": "system",
+                "content": CHATBOT_QUERY_PLANNER_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        text_format=ChatbotPlan,
+    )
+
+    result = response.output_parsed
+
+    if result is None:
+        raise RuntimeError(
+            "OpenAI did not return a chatbot query plan"
+        )
+
+    return result
+
