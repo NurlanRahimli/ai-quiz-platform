@@ -41,7 +41,10 @@ def ask_chatbot(
         current_date=current_date,
     )
 
-    if isinstance(result, ChatbotReportResponse):
+    if isinstance(
+        result,
+        (ChatbotQueryResponse, ChatbotReportResponse),
+    ):
         return result
 
     return format_chatbot_query_result(result)

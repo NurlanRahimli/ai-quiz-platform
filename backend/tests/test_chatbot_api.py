@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import patch
 
 from app.schemas.chatbot import (
@@ -520,4 +521,187 @@ def test_chatbot_returns_attempt_comparison_table(
     assert body["total_rows"] == 3
     assert body["rows"][0]["score_percentage"] == 75.0
     assert body["rows"][2]["score_percentage"] == 25.0
+
+
+
+
+def test_chatbot_answers_irrelevant_question_without_ai_planner(
+    client,
+    register_verified_user_helper,
+):
+    headers = register_and_login(
+        client,
+        register_verified_user_helper,
+        email="chatbot-irrelevant@example.com",
+    )
+
+    with patch(
+        "app.services.chatbot_service.plan_chatbot_query"
+    ) as mock_planner:
+        response = client.post(
+            "/api/v1/chatbot",
+            headers=headers,
+            json={
+                "message": "What's the weather today?",
+            },
+        )
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "type": "text",
+        "message": (
+            "I can help with your QuizApp data, such as your "
+            "quizzes, attempts, scores, performance, questions, "
+            "study recommendations, reports, and connections."
+        ),
+        "columns": [],
+        "rows": [],
+        "total_rows": 0,
+    }
+
+    mock_planner.assert_not_called()
+
+
+def test_chatbot_answers_garbage_without_ai_planner(
+    client,
+    register_verified_user_helper,
+):
+    headers = register_and_login(
+        client,
+        register_verified_user_helper,
+        email="chatbot-garbage@example.com",
+    )
+
+    with patch(
+        "app.services.chatbot_service.plan_chatbot_query"
+    ) as mock_planner:
+        response = client.post(
+            "/api/v1/chatbot",
+            headers=headers,
+            json={
+                "message": "asdfghjkl",
+            },
+        )
+
+    assert response.status_code == 200
+
+    assert response.json()["message"] == (
+        "I didn't understand that. Try asking me about your "
+        "quizzes, attempts, scores, performance, questions, "
+        "study recommendations, reports, or connections."
+    )
+
+    mock_planner.assert_not_called()
+
+
+def test_chatbot_relevant_question_still_uses_ai_planner(
+    client,
+    register_verified_user_helper,
+):
+    headers = register_and_login(
+        client,
+        register_verified_user_helper,
+        email="chatbot-relevant@example.com",
+    )
+
+    result = ChatbotQueryResult(
+        columns=["average_score"],
+        rows=[
+            {
+                "average_score": 85,
+            }
+        ],
+        total_rows=1,
+    )
+
+    with patch(
+        "app.services.chatbot_service.plan_chatbot_query"
+    ) as mock_planner, patch(
+        "app.services.chatbot_service.execute_chatbot_query",
+        return_value=result,
+    ):
+        from app.schemas.ai import (
+            ChatbotPlan,
+            ChatbotQueryFiltersPlan,
+            ChatbotQueryPlan,
+        )
+
+        mock_planner.return_value = ChatbotPlan(
+            intent="query",
+            query=ChatbotQueryPlan(
+                metrics=["average_score"],
+                filters=ChatbotQueryFiltersPlan(),
+            ),
+        )
+
+        response = client.post(
+            "/api/v1/chatbot",
+            headers=headers,
+            json={
+                "message": "What is my average score?",
+            },
+        )
+
+    assert response.status_code == 200
+    mock_planner.assert_called_once()
+
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "followers",
+        "my quizzes",
+        "my scores",
+        "performance",
+        "What should I study?",
+        "Which questions do I struggle with?",
+        "Compare my recent attempts",
+        "Give me my monthly report",
+    ],
+)
+def test_chatbot_fast_path_preserves_relevant_questions(
+    message,
+):
+    from app.services.chatbot_service import _instant_chatbot_response
+
+    assert _instant_chatbot_response(message) is None
+
+
+def test_chatbot_faq_returns_without_calling_ai_planner(
+    client,
+    register_verified_user_helper,
+    monkeypatch,
+):
+    headers = register_and_login(
+        client,
+        register_verified_user_helper,
+        email="chatbot-faq@example.com",
+    )
+
+    def fail_if_planner_is_called(*args, **kwargs):
+        raise AssertionError(
+            "AI planner should not be called for a recognized FAQ"
+        )
+
+    monkeypatch.setattr(
+        "app.services.chatbot_service.plan_chatbot_query",
+        fail_if_planner_is_called,
+    )
+
+    response = client.post(
+        "/api/v1/chatbot",
+        headers=headers,
+        json={
+            "message": "How do I create a quiz?",
+        },
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["type"] == "text"
+    assert "Create Quiz" in payload["message"]
 

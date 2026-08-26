@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     cors_origins: str = "http://localhost:5173"
+    frontend_url: str = "http://localhost:5173"
     email_otp_expire_minutes: int = 10
     email_otp_resend_cooldown_seconds: int = 60
     email_otp_max_attempts: int = 5

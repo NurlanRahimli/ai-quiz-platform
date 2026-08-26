@@ -207,6 +207,8 @@ class ChatbotQueryPlan(BaseModel):
             "attempt_count",
             "quiz_count",
             "average_score",
+            "latest_attempt_at",
+            "category",
         ]
     ] = Field(
         min_length=1,
@@ -224,6 +226,7 @@ class ChatbotQueryPlan(BaseModel):
         "attempt_count",
         "quiz_count",
         "average_score",
+        "latest_attempt_at",
     ] | None = None
     sort_direction: Literal[
         "asc",

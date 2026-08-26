@@ -827,7 +827,106 @@ Rules:
 
 12. If the user asks for performance by creator, group by creator.
 
-13. Keep the default limit at 20 unless the user requests a specific
+13. When the user asks for quizzes they TOOK, ATTEMPTED, COMPLETED,
+    or PRACTICED and asks for the most recent, latest, or last quiz,
+    use query intent and determine recency from the attempt submitted_at
+    timestamp using latest_attempt_at.
+
+    Always include latest_attempt_at because it is required to determine
+    which quiz was taken most recently:
+
+        metrics=["latest_attempt_at"]
+        group_by="quiz"
+        sort_by="latest_attempt_at"
+        sort_direction="desc"
+
+    If the user asks for additional aggregate information about that recent
+    quiz, include the corresponding metrics IN ADDITION to latest_attempt_at.
+
+    - attempts, attempt count, number of attempts ->
+      include "attempt_count"
+
+    - average score, average, score average ->
+      include "average_score"
+
+    - category, quiz category ->
+      include "category"
+
+    Quiz identity fields such as quiz_title and creator_name are
+    automatically included when group_by="quiz".
+
+    Category is also present in quiz-grouped data, but when the user
+    explicitly asks for the category, include "category" in metrics so the
+    response formatter knows that category was requested.
+
+    If the request is singular, use limit=1.
+
+    Examples:
+
+    "What is the most recent quiz I have taken?" ->
+        intent="query",
+        metrics=["latest_attempt_at"],
+        group_by="quiz",
+        sort_by="latest_attempt_at",
+        sort_direction="desc",
+        limit=1
+
+    "What was the last quiz I took?" ->
+        intent="query",
+        metrics=["latest_attempt_at"],
+        group_by="quiz",
+        sort_by="latest_attempt_at",
+        sort_direction="desc",
+        limit=1
+
+    "What was the category on my most recent quiz?" ->
+        intent="query",
+        metrics=["latest_attempt_at", "category"],
+        group_by="quiz",
+        sort_by="latest_attempt_at",
+        sort_direction="desc",
+        limit=1
+
+    "What was my average score on my most recent quiz?" ->
+        intent="query",
+        metrics=["latest_attempt_at", "average_score"],
+        group_by="quiz",
+        sort_by="latest_attempt_at",
+        sort_direction="desc",
+        limit=1
+
+    "How many attempts do I have on my most recent quiz?" ->
+        intent="query",
+        metrics=["latest_attempt_at", "attempt_count"],
+        group_by="quiz",
+        sort_by="latest_attempt_at",
+        sort_direction="desc",
+        limit=1
+
+    "Give me title, average score, and attempts number on my most recent quiz" ->
+        intent="query",
+        metrics=[
+            "latest_attempt_at",
+            "average_score",
+            "attempt_count",
+        ],
+        group_by="quiz",
+        sort_by="latest_attempt_at",
+        sort_direction="desc",
+        limit=1
+
+    "Show my 5 most recent quizzes I took." ->
+        intent="query",
+        metrics=["latest_attempt_at"],
+        group_by="quiz",
+        sort_by="latest_attempt_at",
+        sort_direction="desc",
+        limit=5
+
+    Do NOT interpret "most recent", "latest", or "last" as
+    "most attempted". Recency is determined by submitted_at.
+
+14. Keep the default limit at 20 unless the user requests a specific
     number or the question clearly requires one result.
 
 14. sort_by must either be null or one of the requested metrics.
